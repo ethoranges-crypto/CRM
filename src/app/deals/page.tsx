@@ -3,6 +3,8 @@ import { KanbanBoard } from "@/modules/deals/components/kanban-board"
 import { LabelManager } from "@/modules/deals/components/label-manager"
 import { seed } from "@/lib/seed"
 
+export const dynamic = "force-dynamic"
+
 export default async function DealsPage() {
   seed()
 

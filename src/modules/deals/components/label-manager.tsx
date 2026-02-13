@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,8 @@ interface LabelManagerProps {
 }
 
 export function LabelManager({ initialLabels }: LabelManagerProps) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
   const [labels, setLabels] = useState<Label[]>(initialLabels)
   const [newName, setNewName] = useState("")
   const [newColor, setNewColor] = useState(PRESET_COLORS[0])
@@ -37,29 +40,52 @@ export function LabelManager({ initialLabels }: LabelManagerProps) {
   const [editName, setEditName] = useState("")
   const [editColor, setEditColor] = useState("")
 
-  async function handleCreate() {
+  function handleCreate() {
     if (!newName.trim()) return
-    const result = await createLabel(newName.trim(), newColor)
-    setLabels([
-      ...labels,
-      { ...result, createdAt: new Date() } as Label,
-    ])
-    setNewName("")
+    startTransition(async () => {
+      try {
+        const result = await createLabel(newName.trim(), newColor)
+        if (result) {
+          setLabels([
+            ...labels,
+            { ...result, createdAt: new Date() } as Label,
+          ])
+          setNewName("")
+          router.refresh()
+        }
+      } catch (err) {
+        console.error("Create label error:", err)
+      }
+    })
   }
 
-  async function handleUpdate(id: string) {
-    await updateLabel(id, { name: editName, color: editColor })
-    setLabels(
-      labels.map((l) =>
-        l.id === id ? { ...l, name: editName, color: editColor } : l
-      )
-    )
-    setEditingId(null)
+  function handleUpdate(id: string) {
+    startTransition(async () => {
+      try {
+        await updateLabel(id, { name: editName, color: editColor })
+        setLabels(
+          labels.map((l) =>
+            l.id === id ? { ...l, name: editName, color: editColor } : l
+          )
+        )
+        setEditingId(null)
+        router.refresh()
+      } catch (err) {
+        console.error("Update label error:", err)
+      }
+    })
   }
 
-  async function handleDelete(id: string) {
-    await deleteLabel(id)
-    setLabels(labels.filter((l) => l.id !== id))
+  function handleDelete(id: string) {
+    startTransition(async () => {
+      try {
+        await deleteLabel(id)
+        setLabels(labels.filter((l) => l.id !== id))
+        router.refresh()
+      } catch (err) {
+        console.error("Delete label error:", err)
+      }
+    })
   }
 
   function startEdit(label: Label) {
@@ -106,7 +132,11 @@ export function LabelManager({ initialLabels }: LabelManagerProps) {
                     onChange={(e) => setEditName(e.target.value)}
                     className="flex-1 text-xs"
                   />
-                  <Button size="sm" onClick={() => handleUpdate(label.id)}>
+                  <Button
+                    size="sm"
+                    onClick={() => handleUpdate(label.id)}
+                    disabled={isPending}
+                  >
                     Save
                   </Button>
                 </>
@@ -130,6 +160,7 @@ export function LabelManager({ initialLabels }: LabelManagerProps) {
                     size="sm"
                     className="h-7 w-7 p-0"
                     onClick={() => handleDelete(label.id)}
+                    disabled={isPending}
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
@@ -162,7 +193,11 @@ export function LabelManager({ initialLabels }: LabelManagerProps) {
                 placeholder="Label name"
                 className="flex-1"
               />
-              <Button size="sm" onClick={handleCreate} disabled={!newName.trim()}>
+              <Button
+                size="sm"
+                onClick={handleCreate}
+                disabled={!newName.trim() || isPending}
+              >
                 Add
               </Button>
             </div>

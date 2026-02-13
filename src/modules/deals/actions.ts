@@ -15,6 +15,10 @@ import { nanoid } from "nanoid"
 import { revalidatePath } from "next/cache"
 import type { ColumnWithDeals, Label, DealReminder } from "./types"
 
+// ─── Result type for mutations ───
+
+type ActionResult = { success: true } | { success: false; error: string }
+
 // ─── Columns with deals (includes custom fields + labels) ───
 
 export async function getColumnsWithDeals(): Promise<ColumnWithDeals[]> {
@@ -72,75 +76,114 @@ export async function createDeal(data: {
   company?: string
   telegramHandle?: string
   columnId: string
-}) {
-  const maxOrder = db
-    .select({ order: deals.order })
-    .from(deals)
-    .where(eq(deals.columnId, data.columnId))
-    .all()
+}): Promise<ActionResult> {
+  try {
+    const maxOrder = db
+      .select({ order: deals.order })
+      .from(deals)
+      .where(eq(deals.columnId, data.columnId))
+      .all()
 
-  const nextOrder =
-    maxOrder.length > 0 ? Math.max(...maxOrder.map((d) => d.order)) + 1 : 0
+    const nextOrder =
+      maxOrder.length > 0 ? Math.max(...maxOrder.map((d) => d.order)) + 1 : 0
 
-  db.insert(deals)
-    .values({
-      id: nanoid(),
-      alias: data.alias,
-      company: data.company || null,
-      telegramHandle: data.telegramHandle || null,
-      columnId: data.columnId,
-      order: nextOrder,
-    })
-    .run()
+    db.insert(deals)
+      .values({
+        id: nanoid(),
+        alias: data.alias,
+        company: data.company || null,
+        telegramHandle: data.telegramHandle || null,
+        columnId: data.columnId,
+        order: nextOrder,
+      })
+      .run()
 
-  revalidatePath("/deals")
+    revalidatePath("/deals")
+    return { success: true }
+  } catch (err) {
+    console.error("createDeal error:", err)
+    return { success: false, error: String(err) }
+  }
 }
 
 export async function updateDeal(
   dealId: string,
   data: { alias?: string; company?: string; telegramHandle?: string }
-) {
-  db.update(deals)
-    .set({ ...data, updatedAt: new Date() })
-    .where(eq(deals.id, dealId))
-    .run()
+): Promise<ActionResult> {
+  try {
+    db.update(deals)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(deals.id, dealId))
+      .run()
 
-  revalidatePath("/deals")
+    revalidatePath("/deals")
+    return { success: true }
+  } catch (err) {
+    console.error("updateDeal error:", err)
+    return { success: false, error: String(err) }
+  }
 }
 
-export async function deleteDeal(dealId: string) {
-  db.delete(deals).where(eq(deals.id, dealId)).run()
-  revalidatePath("/deals")
+export async function deleteDeal(dealId: string): Promise<ActionResult> {
+  try {
+    db.delete(deals).where(eq(deals.id, dealId)).run()
+    revalidatePath("/deals")
+    return { success: true }
+  } catch (err) {
+    console.error("deleteDeal error:", err)
+    return { success: false, error: String(err) }
+  }
 }
 
 export async function reorderDeals(
   updates: Array<{ id: string; columnId: string; order: number }>
-) {
-  db.transaction((tx) => {
-    for (const update of updates) {
-      tx.update(deals)
-        .set({
-          columnId: update.columnId,
-          order: update.order,
-          updatedAt: new Date(),
-        })
-        .where(eq(deals.id, update.id))
-        .run()
-    }
-  })
-  revalidatePath("/deals")
+): Promise<ActionResult> {
+  try {
+    db.transaction((tx) => {
+      for (const update of updates) {
+        tx.update(deals)
+          .set({
+            columnId: update.columnId,
+            order: update.order,
+            updatedAt: new Date(),
+          })
+          .where(eq(deals.id, update.id))
+          .run()
+      }
+    })
+    revalidatePath("/deals")
+    return { success: true }
+  } catch (err) {
+    console.error("reorderDeals error:", err)
+    return { success: false, error: String(err) }
+  }
 }
 
 // ─── Notes ───
 
-export async function addNote(dealId: string, content: string) {
-  db.insert(dealNotes).values({ id: nanoid(), dealId, content }).run()
-  revalidatePath("/deals")
+export async function addNote(
+  dealId: string,
+  content: string
+): Promise<ActionResult> {
+  try {
+    db.insert(dealNotes).values({ id: nanoid(), dealId, content }).run()
+    revalidatePath("/deals")
+    return { success: true }
+  } catch (err) {
+    console.error("addNote error:", err)
+    return { success: false, error: String(err) }
+  }
 }
 
-export async function deleteNote(noteId: string) {
-  db.delete(dealNotes).where(eq(dealNotes.id, noteId)).run()
-  revalidatePath("/deals")
+export async function deleteNote(noteId: string): Promise<ActionResult> {
+  try {
+    db.delete(dealNotes).where(eq(dealNotes.id, noteId)).run()
+    revalidatePath("/deals")
+    return { success: true }
+  } catch (err) {
+    console.error("deleteNote error:", err)
+    return { success: false, error: String(err) }
+  }
 }
 
 // ─── Custom Fields ───
@@ -149,24 +192,49 @@ export async function addCustomField(
   dealId: string,
   fieldName: string,
   fieldValue: string
-) {
-  db.insert(dealCustomFields)
-    .values({ id: nanoid(), dealId, fieldName, fieldValue })
-    .run()
-  revalidatePath("/deals")
+): Promise<ActionResult> {
+  try {
+    db.insert(dealCustomFields)
+      .values({ id: nanoid(), dealId, fieldName, fieldValue })
+      .run()
+    revalidatePath("/deals")
+    return { success: true }
+  } catch (err) {
+    console.error("addCustomField error:", err)
+    return { success: false, error: String(err) }
+  }
 }
 
 export async function updateCustomField(
   fieldId: string,
   data: { fieldName?: string; fieldValue?: string }
-) {
-  db.update(dealCustomFields).set(data).where(eq(dealCustomFields.id, fieldId)).run()
-  revalidatePath("/deals")
+): Promise<ActionResult> {
+  try {
+    db.update(dealCustomFields)
+      .set(data)
+      .where(eq(dealCustomFields.id, fieldId))
+      .run()
+    revalidatePath("/deals")
+    return { success: true }
+  } catch (err) {
+    console.error("updateCustomField error:", err)
+    return { success: false, error: String(err) }
+  }
 }
 
-export async function deleteCustomField(fieldId: string) {
-  db.delete(dealCustomFields).where(eq(dealCustomFields.id, fieldId)).run()
-  revalidatePath("/deals")
+export async function deleteCustomField(
+  fieldId: string
+): Promise<ActionResult> {
+  try {
+    db.delete(dealCustomFields)
+      .where(eq(dealCustomFields.id, fieldId))
+      .run()
+    revalidatePath("/deals")
+    return { success: true }
+  } catch (err) {
+    console.error("deleteCustomField error:", err)
+    return { success: false, error: String(err) }
+  }
 }
 
 // ─── Labels ───
@@ -176,122 +244,189 @@ export async function getLabels(): Promise<Label[]> {
 }
 
 export async function createLabel(name: string, color: string) {
-  const id = nanoid()
-  db.insert(labels).values({ id, name, color }).run()
-  revalidatePath("/deals")
-  return { id, name, color }
+  try {
+    const id = nanoid()
+    db.insert(labels).values({ id, name, color }).run()
+    revalidatePath("/deals")
+    return { id, name, color }
+  } catch (err) {
+    console.error("createLabel error:", err)
+    return null
+  }
 }
 
 export async function updateLabel(
   labelId: string,
   data: { name?: string; color?: string }
-) {
-  db.update(labels).set(data).where(eq(labels.id, labelId)).run()
-  revalidatePath("/deals")
-}
-
-export async function deleteLabel(labelId: string) {
-  db.delete(labels).where(eq(labels.id, labelId)).run()
-  revalidatePath("/deals")
-}
-
-export async function assignLabel(dealId: string, labelId: string) {
-  const existing = db
-    .select()
-    .from(dealLabels)
-    .where(eq(dealLabels.dealId, dealId))
-    .all()
-    .find((r) => r.labelId === labelId)
-  if (!existing) {
-    db.insert(dealLabels).values({ dealId, labelId }).run()
+): Promise<ActionResult> {
+  try {
+    db.update(labels).set(data).where(eq(labels.id, labelId)).run()
     revalidatePath("/deals")
+    return { success: true }
+  } catch (err) {
+    console.error("updateLabel error:", err)
+    return { success: false, error: String(err) }
   }
 }
 
-export async function removeLabel(dealId: string, labelId: string) {
-  db.delete(dealLabels)
-    .where(and(eq(dealLabels.dealId, dealId), eq(dealLabels.labelId, labelId)))
-    .run()
-  revalidatePath("/deals")
+export async function deleteLabel(labelId: string): Promise<ActionResult> {
+  try {
+    db.delete(labels).where(eq(labels.id, labelId)).run()
+    revalidatePath("/deals")
+    return { success: true }
+  } catch (err) {
+    console.error("deleteLabel error:", err)
+    return { success: false, error: String(err) }
+  }
+}
+
+export async function assignLabel(
+  dealId: string,
+  labelId: string
+): Promise<ActionResult> {
+  try {
+    const existing = db
+      .select()
+      .from(dealLabels)
+      .where(eq(dealLabels.dealId, dealId))
+      .all()
+      .find((r) => r.labelId === labelId)
+    if (!existing) {
+      db.insert(dealLabels).values({ dealId, labelId }).run()
+      revalidatePath("/deals")
+    }
+    return { success: true }
+  } catch (err) {
+    console.error("assignLabel error:", err)
+    return { success: false, error: String(err) }
+  }
+}
+
+export async function removeLabel(
+  dealId: string,
+  labelId: string
+): Promise<ActionResult> {
+  try {
+    db.delete(dealLabels)
+      .where(and(eq(dealLabels.dealId, dealId), eq(dealLabels.labelId, labelId)))
+      .run()
+    revalidatePath("/deals")
+    return { success: true }
+  } catch (err) {
+    console.error("removeLabel error:", err)
+    return { success: false, error: String(err) }
+  }
 }
 
 // ─── Pipeline Columns ───
 
-export async function createColumn(title: string) {
-  const maxOrder = db
-    .select({ order: pipelineColumns.order })
-    .from(pipelineColumns)
-    .all()
+export async function createColumn(
+  title: string
+): Promise<{ success: true; id: string } | { success: false; error: string }> {
+  try {
+    const maxOrder = db
+      .select({ order: pipelineColumns.order })
+      .from(pipelineColumns)
+      .all()
 
-  const nextOrder =
-    maxOrder.length > 0
-      ? Math.max(...maxOrder.map((c) => c.order)) + 1
-      : 0
+    const nextOrder =
+      maxOrder.length > 0
+        ? Math.max(...maxOrder.map((c) => c.order)) + 1
+        : 0
 
-  const id = nanoid()
-  db.insert(pipelineColumns).values({ id, title, order: nextOrder }).run()
-  revalidatePath("/deals")
-  return id
+    const id = nanoid()
+    db.insert(pipelineColumns).values({ id, title, order: nextOrder }).run()
+    revalidatePath("/deals")
+    return { success: true, id }
+  } catch (err) {
+    console.error("createColumn error:", err)
+    return { success: false, error: String(err) }
+  }
 }
 
 export async function updateColumn(
   columnId: string,
   data: { title?: string }
-) {
-  db.update(pipelineColumns).set(data).where(eq(pipelineColumns.id, columnId)).run()
-  revalidatePath("/deals")
+): Promise<ActionResult> {
+  try {
+    db.update(pipelineColumns)
+      .set(data)
+      .where(eq(pipelineColumns.id, columnId))
+      .run()
+    revalidatePath("/deals")
+    return { success: true }
+  } catch (err) {
+    console.error("updateColumn error:", err)
+    return { success: false, error: String(err) }
+  }
 }
 
-export async function deleteColumn(columnId: string, moveDealsTo?: string) {
-  db.transaction((tx) => {
-    if (moveDealsTo) {
-      const existingDeals = tx
-        .select({ order: deals.order })
-        .from(deals)
-        .where(eq(deals.columnId, moveDealsTo))
-        .all()
-      const maxOrder =
-        existingDeals.length > 0
-          ? Math.max(...existingDeals.map((d) => d.order))
-          : -1
+export async function deleteColumn(
+  columnId: string,
+  moveDealsTo?: string
+): Promise<ActionResult> {
+  try {
+    db.transaction((tx) => {
+      if (moveDealsTo) {
+        const existingDeals = tx
+          .select({ order: deals.order })
+          .from(deals)
+          .where(eq(deals.columnId, moveDealsTo))
+          .all()
+        const maxOrder =
+          existingDeals.length > 0
+            ? Math.max(...existingDeals.map((d) => d.order))
+            : -1
 
-      const dealsToMove = tx
-        .select()
-        .from(deals)
-        .where(eq(deals.columnId, columnId))
-        .all()
+        const dealsToMove = tx
+          .select()
+          .from(deals)
+          .where(eq(deals.columnId, columnId))
+          .all()
 
-      dealsToMove.forEach((deal, i) => {
-        tx.update(deals)
-          .set({
-            columnId: moveDealsTo,
-            order: maxOrder + 1 + i,
-            updatedAt: new Date(),
-          })
-          .where(eq(deals.id, deal.id))
-          .run()
-      })
-    } else {
-      // Delete all deals in this column (cascade handles notes/custom fields/labels)
-      tx.delete(deals).where(eq(deals.columnId, columnId)).run()
-    }
-    tx.delete(pipelineColumns).where(eq(pipelineColumns.id, columnId)).run()
-  })
-  revalidatePath("/deals")
+        dealsToMove.forEach((deal, i) => {
+          tx.update(deals)
+            .set({
+              columnId: moveDealsTo,
+              order: maxOrder + 1 + i,
+              updatedAt: new Date(),
+            })
+            .where(eq(deals.id, deal.id))
+            .run()
+        })
+      } else {
+        tx.delete(deals).where(eq(deals.columnId, columnId)).run()
+      }
+      tx.delete(pipelineColumns)
+        .where(eq(pipelineColumns.id, columnId))
+        .run()
+    })
+    revalidatePath("/deals")
+    return { success: true }
+  } catch (err) {
+    console.error("deleteColumn error:", err)
+    return { success: false, error: String(err) }
+  }
 }
 
 export async function reorderColumns(
   updates: Array<{ id: string; order: number }>
-) {
-  db.transaction((tx) => {
-    for (const update of updates) {
-      tx.update(pipelineColumns)
-        .set({ order: update.order })
-        .where(eq(pipelineColumns.id, update.id))
-        .run()
-    }
-  })
-  revalidatePath("/deals")
+): Promise<ActionResult> {
+  try {
+    db.transaction((tx) => {
+      for (const update of updates) {
+        tx.update(pipelineColumns)
+          .set({ order: update.order })
+          .where(eq(pipelineColumns.id, update.id))
+          .run()
+      }
+    })
+    revalidatePath("/deals")
+    return { success: true }
+  } catch (err) {
+    console.error("reorderColumns error:", err)
+    return { success: false, error: String(err) }
+  }
 }
 
 // ─── Reminders ───
@@ -300,46 +435,81 @@ export async function addReminder(
   dealId: string,
   note: string,
   dueAt: Date | string
-) {
-  // Server actions receive Date as ISO string from client serialization
-  const dueDate = typeof dueAt === "string" ? new Date(dueAt) : dueAt
-  db.insert(dealReminders)
-    .values({ id: nanoid(), dealId, note, dueAt: dueDate, status: "active" })
-    .run()
-  revalidatePath("/deals")
-  revalidatePath("/reminders")
+): Promise<ActionResult> {
+  try {
+    // Server actions receive Date as ISO string from client serialization
+    const dueDate = typeof dueAt === "string" ? new Date(dueAt) : dueAt
+    db.insert(dealReminders)
+      .values({ id: nanoid(), dealId, note, dueAt: dueDate, status: "active" })
+      .run()
+    revalidatePath("/deals")
+    revalidatePath("/reminders")
+    return { success: true }
+  } catch (err) {
+    console.error("addReminder error:", err)
+    return { success: false, error: String(err) }
+  }
 }
 
 export async function updateReminder(
   reminderId: string,
   data: { note?: string; dueAt?: Date | string; status?: string }
-) {
-  // Server actions receive Date as ISO string from client serialization
-  const updateData = { ...data, updatedAt: new Date() }
-  if (typeof updateData.dueAt === "string") {
-    updateData.dueAt = new Date(updateData.dueAt)
+): Promise<ActionResult> {
+  try {
+    // Server actions receive Date as ISO string from client serialization
+    const updateData = { ...data, updatedAt: new Date() }
+    if (typeof updateData.dueAt === "string") {
+      updateData.dueAt = new Date(updateData.dueAt)
+    }
+    db.update(dealReminders)
+      .set(
+        updateData as {
+          note?: string
+          dueAt?: Date
+          status?: string
+          updatedAt: Date
+        }
+      )
+      .where(eq(dealReminders.id, reminderId))
+      .run()
+    revalidatePath("/deals")
+    revalidatePath("/reminders")
+    return { success: true }
+  } catch (err) {
+    console.error("updateReminder error:", err)
+    return { success: false, error: String(err) }
   }
-  db.update(dealReminders)
-    .set(updateData as { note?: string; dueAt?: Date; status?: string; updatedAt: Date })
-    .where(eq(dealReminders.id, reminderId))
-    .run()
-  revalidatePath("/deals")
-  revalidatePath("/reminders")
 }
 
-export async function deleteReminder(reminderId: string) {
-  db.delete(dealReminders).where(eq(dealReminders.id, reminderId)).run()
-  revalidatePath("/deals")
-  revalidatePath("/reminders")
+export async function deleteReminder(
+  reminderId: string
+): Promise<ActionResult> {
+  try {
+    db.delete(dealReminders).where(eq(dealReminders.id, reminderId)).run()
+    revalidatePath("/deals")
+    revalidatePath("/reminders")
+    return { success: true }
+  } catch (err) {
+    console.error("deleteReminder error:", err)
+    return { success: false, error: String(err) }
+  }
 }
 
-export async function markReminderDone(reminderId: string) {
-  db.update(dealReminders)
-    .set({ status: "done", updatedAt: new Date() })
-    .where(eq(dealReminders.id, reminderId))
-    .run()
-  revalidatePath("/deals")
-  revalidatePath("/reminders")
+export async function markReminderDone(
+  reminderId: string
+): Promise<ActionResult> {
+  try {
+    db.update(dealReminders)
+      .set({ status: "done", updatedAt: new Date() })
+      .where(eq(dealReminders.id, reminderId))
+      .run()
+    revalidatePath("/deals")
+    revalidatePath("/reminders")
+    return { success: true }
+  } catch (err) {
+    console.error("markReminderDone error:", err)
+    return { success: false, error: String(err) }
+  }
 }
 
 export async function getDueReminders(): Promise<DealReminder[]> {

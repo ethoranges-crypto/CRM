@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import {
   Dialog,
   DialogContent,
@@ -14,19 +15,34 @@ import { Plus } from "lucide-react"
 import { createDeal } from "../actions"
 
 export function AddDealDialog({ columnId }: { columnId: string }) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [isPending, startTransition] = useTransition()
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
-    await createDeal({
-      alias: formData.get("alias") as string,
-      company: (formData.get("company") as string) || undefined,
-      telegramHandle:
-        (formData.get("telegramHandle") as string) || undefined,
-      columnId,
+    startTransition(async () => {
+      try {
+        const result = await createDeal({
+          alias: formData.get("alias") as string,
+          company: (formData.get("company") as string) || undefined,
+          telegramHandle:
+            (formData.get("telegramHandle") as string) || undefined,
+          columnId,
+        })
+        if (!result.success) {
+          console.error("Create deal failed:", result.error)
+          alert("Failed to create deal: " + result.error)
+          return
+        }
+        setOpen(false)
+        router.refresh()
+      } catch (err) {
+        console.error("Create deal error:", err)
+        alert("Failed to create deal")
+      }
     })
-    setOpen(false)
   }
 
   return (
@@ -47,8 +63,8 @@ export function AddDealDialog({ columnId }: { columnId: string }) {
             name="telegramHandle"
             placeholder="Telegram handle (optional)"
           />
-          <Button type="submit" className="w-full">
-            Create
+          <Button type="submit" className="w-full" disabled={isPending}>
+            {isPending ? "Creating..." : "Create"}
           </Button>
         </form>
       </DialogContent>

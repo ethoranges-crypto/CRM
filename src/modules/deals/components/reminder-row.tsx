@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -13,6 +14,8 @@ interface ReminderRowProps {
 }
 
 export function ReminderRow({ reminder }: ReminderRowProps) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
   const [editing, setEditing] = useState(false)
   const [editDate, setEditDate] = useState("")
   const [editTime, setEditTime] = useState("")
@@ -21,26 +24,47 @@ export function ReminderRow({ reminder }: ReminderRowProps) {
     reminder.status === "active" && new Date(reminder.dueAt) <= new Date()
   const isPaused = reminder.status === "paused"
 
-  async function handleTogglePause() {
-    await updateReminder(reminder.id, {
-      status: isPaused ? "active" : "paused",
+  function handleTogglePause() {
+    startTransition(async () => {
+      try {
+        await updateReminder(reminder.id, {
+          status: isPaused ? "active" : "paused",
+        })
+        router.refresh()
+      } catch (err) {
+        console.error("Toggle pause error:", err)
+      }
     })
   }
 
-  async function handleDone() {
-    await markReminderDone(reminder.id)
+  function handleDone() {
+    startTransition(async () => {
+      try {
+        await markReminderDone(reminder.id)
+        router.refresh()
+      } catch (err) {
+        console.error("Mark done error:", err)
+      }
+    })
   }
 
-  async function handleReschedule() {
+  function handleReschedule() {
     if (!editDate) return
-    const dateStr = editTime
-      ? `${editDate}T${editTime}`
-      : `${editDate}T09:00`
-    await updateReminder(reminder.id, {
-      dueAt: new Date(dateStr),
-      status: "active",
+    startTransition(async () => {
+      try {
+        const dateStr = editTime
+          ? `${editDate}T${editTime}`
+          : `${editDate}T09:00`
+        await updateReminder(reminder.id, {
+          dueAt: new Date(dateStr),
+          status: "active",
+        })
+        setEditing(false)
+        router.refresh()
+      } catch (err) {
+        console.error("Reschedule error:", err)
+      }
     })
-    setEditing(false)
   }
 
   function startEditing() {
@@ -78,6 +102,7 @@ export function ReminderRow({ reminder }: ReminderRowProps) {
               variant="outline"
               className="h-6 px-2 text-xs"
               onClick={handleReschedule}
+              disabled={isPending}
             >
               Save
             </Button>
@@ -111,6 +136,7 @@ export function ReminderRow({ reminder }: ReminderRowProps) {
           size="sm"
           className="h-6 w-6 p-0"
           onClick={handleTogglePause}
+          disabled={isPending}
           title={isPaused ? "Resume" : "Pause"}
         >
           {isPaused ? (
@@ -124,6 +150,7 @@ export function ReminderRow({ reminder }: ReminderRowProps) {
           size="sm"
           className="h-6 w-6 p-0"
           onClick={handleDone}
+          disabled={isPending}
           title="Mark done"
         >
           <Check className="h-3 w-3" />
@@ -132,7 +159,17 @@ export function ReminderRow({ reminder }: ReminderRowProps) {
           variant="ghost"
           size="sm"
           className="h-6 w-6 p-0"
-          onClick={() => deleteReminder(reminder.id)}
+          onClick={() => {
+            startTransition(async () => {
+              try {
+                await deleteReminder(reminder.id)
+                router.refresh()
+              } catch (err) {
+                console.error("Delete reminder error:", err)
+              }
+            })
+          }}
+          disabled={isPending}
           title="Delete"
         >
           <Trash2 className="h-3 w-3" />

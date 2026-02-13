@@ -1,5 +1,7 @@
 "use client"
 
+import { useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -21,12 +23,22 @@ export function LabelPicker({
   allLabels,
   assignedLabelIds,
 }: LabelPickerProps) {
-  async function handleToggle(labelId: string, isAssigned: boolean) {
-    if (isAssigned) {
-      await removeLabel(dealId, labelId)
-    } else {
-      await assignLabel(dealId, labelId)
-    }
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+
+  function handleToggle(labelId: string, isAssigned: boolean) {
+    startTransition(async () => {
+      try {
+        if (isAssigned) {
+          await removeLabel(dealId, labelId)
+        } else {
+          await assignLabel(dealId, labelId)
+        }
+        router.refresh()
+      } catch (err) {
+        console.error("Toggle label error:", err)
+      }
+    })
   }
 
   return (
@@ -49,7 +61,8 @@ export function LabelPicker({
                 <button
                   key={label.id}
                   onClick={() => handleToggle(label.id, isAssigned)}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+                  disabled={isPending}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent disabled:opacity-50"
                 >
                   <span
                     className="h-3 w-3 shrink-0 rounded-full border"

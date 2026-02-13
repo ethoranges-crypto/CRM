@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -18,6 +19,8 @@ interface ReminderPageRowProps {
 }
 
 export function ReminderPageRow({ data }: ReminderPageRowProps) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
   const { reminder, dealAlias, dealCompany } = data
   const [editing, setEditing] = useState(false)
   const [editDate, setEditDate] = useState("")
@@ -27,14 +30,28 @@ export function ReminderPageRow({ data }: ReminderPageRowProps) {
     reminder.status === "active" && new Date(reminder.dueAt) <= new Date()
   const isPaused = reminder.status === "paused"
 
-  async function handleTogglePause() {
-    await updateReminder(reminder.id, {
-      status: isPaused ? "active" : "paused",
+  function handleTogglePause() {
+    startTransition(async () => {
+      try {
+        await updateReminder(reminder.id, {
+          status: isPaused ? "active" : "paused",
+        })
+        router.refresh()
+      } catch (err) {
+        console.error("Toggle pause error:", err)
+      }
     })
   }
 
-  async function handleDone() {
-    await markReminderDone(reminder.id)
+  function handleDone() {
+    startTransition(async () => {
+      try {
+        await markReminderDone(reminder.id)
+        router.refresh()
+      } catch (err) {
+        console.error("Mark done error:", err)
+      }
+    })
   }
 
   function startEditing() {
@@ -44,16 +61,23 @@ export function ReminderPageRow({ data }: ReminderPageRowProps) {
     setEditing(true)
   }
 
-  async function handleReschedule() {
+  function handleReschedule() {
     if (!editDate) return
-    const dateStr = editTime
-      ? `${editDate}T${editTime}`
-      : `${editDate}T09:00`
-    await updateReminder(reminder.id, {
-      dueAt: new Date(dateStr),
-      status: "active",
+    startTransition(async () => {
+      try {
+        const dateStr = editTime
+          ? `${editDate}T${editTime}`
+          : `${editDate}T09:00`
+        await updateReminder(reminder.id, {
+          dueAt: new Date(dateStr),
+          status: "active",
+        })
+        setEditing(false)
+        router.refresh()
+      } catch (err) {
+        console.error("Reschedule error:", err)
+      }
     })
-    setEditing(false)
   }
 
   return (
@@ -88,6 +112,7 @@ export function ReminderPageRow({ data }: ReminderPageRowProps) {
                 variant="outline"
                 className="h-7 text-xs"
                 onClick={handleReschedule}
+                disabled={isPending}
               >
                 Save
               </Button>
@@ -121,6 +146,7 @@ export function ReminderPageRow({ data }: ReminderPageRowProps) {
             size="sm"
             className="h-8 w-8 p-0"
             onClick={handleDone}
+            disabled={isPending}
             title="Mark done"
           >
             <Check className="h-4 w-4" />
@@ -130,6 +156,7 @@ export function ReminderPageRow({ data }: ReminderPageRowProps) {
             size="sm"
             className="h-8 w-8 p-0"
             onClick={handleTogglePause}
+            disabled={isPending}
             title={isPaused ? "Resume" : "Pause"}
           >
             {isPaused ? (
@@ -151,7 +178,17 @@ export function ReminderPageRow({ data }: ReminderPageRowProps) {
             variant="ghost"
             size="sm"
             className="h-8 w-8 p-0"
-            onClick={() => deleteReminder(reminder.id)}
+            onClick={() => {
+              startTransition(async () => {
+                try {
+                  await deleteReminder(reminder.id)
+                  router.refresh()
+                } catch (err) {
+                  console.error("Delete reminder error:", err)
+                }
+              })
+            }}
+            disabled={isPending}
             title="Delete"
           >
             <Trash2 className="h-4 w-4" />

@@ -131,10 +131,16 @@ export async function updateContactCompany(
   contactId: string,
   company: string
 ) {
-  db.update(tgContacts)
-    .set({ company })
-    .where(eq(tgContacts.id, contactId))
-    .run()
+  try {
+    db.update(tgContacts)
+      .set({ company })
+      .where(eq(tgContacts.id, contactId))
+      .run()
+    return { success: true as const }
+  } catch (err) {
+    console.error("updateContactCompany error:", err)
+    return { success: false as const, error: String(err) }
+  }
 }
 
 export async function deleteGroup(groupId: string) {

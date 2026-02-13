@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import {
   Dialog,
   DialogContent,
@@ -14,14 +15,29 @@ import { Plus } from "lucide-react"
 import { createColumn } from "../actions"
 
 export function AddColumnButton() {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState("")
+  const [isPending, startTransition] = useTransition()
 
   async function handleCreate() {
     if (!title.trim()) return
-    await createColumn(title.trim())
-    setTitle("")
-    setOpen(false)
+    startTransition(async () => {
+      try {
+        const result = await createColumn(title.trim())
+        if (!result.success) {
+          console.error("Create column failed:", result.error)
+          alert("Failed to create column: " + result.error)
+          return
+        }
+        setTitle("")
+        setOpen(false)
+        router.refresh()
+      } catch (err) {
+        console.error("Create column error:", err)
+        alert("Failed to create column")
+      }
+    })
   }
 
   return (
@@ -48,8 +64,12 @@ export function AddColumnButton() {
             placeholder="Column name"
             autoFocus
           />
-          <Button type="submit" className="w-full" disabled={!title.trim()}>
-            Create
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={!title.trim() || isPending}
+          >
+            {isPending ? "Creating..." : "Create"}
           </Button>
         </form>
       </DialogContent>

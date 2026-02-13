@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,8 @@ export function DealCardDialog({
   open,
   onOpenChange,
 }: DealCardDialogProps) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
   const [alias, setAlias] = useState(deal.alias)
   const [company, setCompany] = useState(deal.company || "")
   const [tgHandle, setTgHandle] = useState(deal.telegramHandle || "")
@@ -49,30 +52,76 @@ export function DealCardDialog({
   const [reminderDate, setReminderDate] = useState("")
   const [reminderTime, setReminderTime] = useState("")
 
-  async function handleSave() {
-    await updateDeal(deal.id, {
-      alias: alias || deal.alias,
-      company: company || undefined,
-      telegramHandle: tgHandle || undefined,
+  function handleSave() {
+    startTransition(async () => {
+      try {
+        await updateDeal(deal.id, {
+          alias: alias || deal.alias,
+          company: company || undefined,
+          telegramHandle: tgHandle || undefined,
+        })
+        router.refresh()
+      } catch (err) {
+        console.error("Save deal error:", err)
+      }
     })
   }
 
-  async function handleAddNote() {
+  function handleAddNote() {
     if (!noteText.trim()) return
-    await addNote(deal.id, noteText.trim())
-    setNoteText("")
+    startTransition(async () => {
+      try {
+        await addNote(deal.id, noteText.trim())
+        setNoteText("")
+        router.refresh()
+      } catch (err) {
+        console.error("Add note error:", err)
+      }
+    })
   }
 
-  async function handleAddCustomField() {
+  function handleAddCustomField() {
     if (!newFieldName.trim() || !newFieldValue.trim()) return
-    await addCustomField(deal.id, newFieldName.trim(), newFieldValue.trim())
-    setNewFieldName("")
-    setNewFieldValue("")
+    startTransition(async () => {
+      try {
+        await addCustomField(deal.id, newFieldName.trim(), newFieldValue.trim())
+        setNewFieldName("")
+        setNewFieldValue("")
+        router.refresh()
+      } catch (err) {
+        console.error("Add custom field error:", err)
+      }
+    })
   }
 
-  async function handleDelete() {
-    await deleteDeal(deal.id)
-    onOpenChange(false)
+  function handleDelete() {
+    startTransition(async () => {
+      try {
+        await deleteDeal(deal.id)
+        onOpenChange(false)
+        router.refresh()
+      } catch (err) {
+        console.error("Delete deal error:", err)
+      }
+    })
+  }
+
+  function handleAddReminder() {
+    if (!reminderDate || !reminderNote.trim()) return
+    startTransition(async () => {
+      try {
+        const dateStr = reminderTime
+          ? `${reminderDate}T${reminderTime}`
+          : `${reminderDate}T09:00`
+        await addReminder(deal.id, reminderNote.trim(), new Date(dateStr))
+        setReminderNote("")
+        setReminderDate("")
+        setReminderTime("")
+        router.refresh()
+      } catch (err) {
+        console.error("Add reminder error:", err)
+      }
+    })
   }
 
   return (
@@ -167,7 +216,9 @@ export function DealCardDialog({
               size="sm"
               variant="outline"
               onClick={handleAddCustomField}
-              disabled={!newFieldName.trim() || !newFieldValue.trim()}
+              disabled={
+                !newFieldName.trim() || !newFieldValue.trim() || isPending
+              }
             >
               <Plus className="h-3 w-3" />
             </Button>
@@ -214,21 +265,8 @@ export function DealCardDialog({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={async () => {
-                  if (!reminderDate || !reminderNote.trim()) return
-                  const dateStr = reminderTime
-                    ? `${reminderDate}T${reminderTime}`
-                    : `${reminderDate}T09:00`
-                  await addReminder(
-                    deal.id,
-                    reminderNote.trim(),
-                    new Date(dateStr)
-                  )
-                  setReminderNote("")
-                  setReminderDate("")
-                  setReminderTime("")
-                }}
-                disabled={!reminderDate || !reminderNote.trim()}
+                onClick={handleAddReminder}
+                disabled={!reminderDate || !reminderNote.trim() || isPending}
               >
                 <Plus className="h-3 w-3" />
               </Button>
@@ -259,7 +297,16 @@ export function DealCardDialog({
                 variant="ghost"
                 size="sm"
                 className="h-6 w-6 shrink-0 p-0 opacity-0 group-hover:opacity-100"
-                onClick={() => deleteNote(note.id)}
+                onClick={() => {
+                  startTransition(async () => {
+                    try {
+                      await deleteNote(note.id)
+                      router.refresh()
+                    } catch (err) {
+                      console.error("Delete note error:", err)
+                    }
+                  })
+                }}
               >
                 <Trash2 className="h-3 w-3" />
               </Button>
@@ -272,10 +319,15 @@ export function DealCardDialog({
             className="min-h-[60px]"
           />
           <div className="flex justify-between">
-            <Button onClick={handleAddNote} size="sm">
+            <Button onClick={handleAddNote} size="sm" disabled={isPending}>
               Add Note
             </Button>
-            <Button onClick={handleDelete} variant="destructive" size="sm">
+            <Button
+              onClick={handleDelete}
+              variant="destructive"
+              size="sm"
+              disabled={isPending}
+            >
               <Trash2 className="mr-1 h-3 w-3" /> Delete Deal
             </Button>
           </div>
@@ -292,12 +344,24 @@ function CustomFieldRow({
 }: {
   field: { id: string; fieldName: string; fieldValue: string }
 }) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
   const [name, setName] = useState(field.fieldName)
   const [value, setValue] = useState(field.fieldValue)
 
-  async function handleSave() {
+  function handleSave() {
     if (name !== field.fieldName || value !== field.fieldValue) {
-      await updateCustomField(field.id, { fieldName: name, fieldValue: value })
+      startTransition(async () => {
+        try {
+          await updateCustomField(field.id, {
+            fieldName: name,
+            fieldValue: value,
+          })
+          router.refresh()
+        } catch (err) {
+          console.error("Update custom field error:", err)
+        }
+      })
     }
   }
 
@@ -321,7 +385,17 @@ function CustomFieldRow({
         variant="ghost"
         size="sm"
         className="h-7 w-7 shrink-0 p-0"
-        onClick={() => deleteCustomField(field.id)}
+        disabled={isPending}
+        onClick={() => {
+          startTransition(async () => {
+            try {
+              await deleteCustomField(field.id)
+              router.refresh()
+            } catch (err) {
+              console.error("Delete custom field error:", err)
+            }
+          })
+        }}
       >
         <X className="h-3 w-3" />
       </Button>

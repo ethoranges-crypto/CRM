@@ -2,6 +2,8 @@ import { getAllActiveReminders } from "@/modules/deals/actions"
 import { ReminderPageRow } from "@/modules/deals/components/reminder-page-row"
 import { NotificationBanner } from "@/modules/deals/components/notification-banner"
 
+export const dynamic = "force-dynamic"
+
 export default async function RemindersPage() {
   const reminders = await getAllActiveReminders()
 

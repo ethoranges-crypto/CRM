@@ -4,6 +4,8 @@ import { SyncGroupButton } from "@/modules/telegram/components/sync-group-button
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
+export const dynamic = "force-dynamic"
+
 export default async function GroupsPage() {
   const isAuthed = await checkTelegramAuth()
 
