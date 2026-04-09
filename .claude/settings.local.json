@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(gh api:*)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/src/lib/db.ts\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/src/modules/deals/schema.ts\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/src/modules/deals/actions.ts\")",
+      "Bash(curl -s https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/__TRACKED_VAR__)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/src/app/telegram/groups/%5Bid%5D/page.tsx\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/package.json\")",
+      "Bash(npm install:*)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Users/simon/AppData/Roaming/**)",
+      "Read(//c/Users/simon/**)",
+      "Bash(cmd.exe /c \"where node 2>&1\")",
+      "Bash(cmd.exe /c \"where node && node --version && npm --version\")",
+      "Bash(powershell.exe -Command \"Get-Command node -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source; node --version; npm --version\")",
+      "Bash(powershell.exe -Command 'Get-ChildItem '\\\\''C:\\\\Program Files\\\\nodejs'\\\\'' -ErrorAction SilentlyContinue; Get-ChildItem '\\\\''C:\\\\Program Files \\(x86\\)\\\\nodejs'\\\\'' -ErrorAction SilentlyContinue; Get-ChildItem $env:APPDATA\\\\npm -ErrorAction SilentlyContinue | Select-Object -First 5; Get-ChildItem $env:LOCALAPPDATA\\\\Programs -ErrorAction SilentlyContinue | Where-Object Name -like '\\\\''*node*'\\\\''')",
+      "Bash(powershell.exe -Command \"Get-ChildItem 'C:\\\\' -ErrorAction SilentlyContinue | Select-Object Name\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem 'C:\\\\Program Files' -ErrorAction SilentlyContinue | Select-Object Name\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/src/components/ui/alert-dialog.tsx\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/src/components/ui/badge.tsx\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/src/components/ui/button.tsx\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/src/components/ui/card.tsx\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/src/components/ui/dialog.tsx\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/src/components/ui/dropdown-menu.tsx\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/src/components/ui/input.tsx\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/src/components/ui/popover.tsx\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/src/components/ui/scroll-area.tsx\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/src/components/ui/select.tsx\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/src/components/ui/textarea.tsx\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ethoranges-crypto/CRM/main/src/components/ui/tooltip.tsx\")"
+    ]
+  }
+}
