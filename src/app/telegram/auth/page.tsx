@@ -4,10 +4,13 @@ import { getCanEdit } from "@/lib/auth"
 import { redirect } from "next/navigation"
 
 export default async function TelegramAuthPage() {
-  const [isAuthed, canEdit] = await Promise.all([
-    checkTelegramAuth(),
-    getCanEdit(),
-  ])
+  let isAuthed = false
+  try {
+    isAuthed = await checkTelegramAuth()
+  } catch {
+    isAuthed = false
+  }
+  const canEdit = await getCanEdit()
 
   if (isAuthed) redirect("/telegram")
   if (!canEdit) redirect("/telegram")
