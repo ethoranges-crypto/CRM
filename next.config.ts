@@ -1,12 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["telegram", "gramjs"],
-  logging: {
-    fetches: {
-      fullUrl: true,
-    },
-  },
+  serverExternalPackages: [
+    "telegram",
+    "telegram/sessions",
+    "telegram/tl",
+    "gramjs",
+  ],
 };
 
 export default nextConfig;
