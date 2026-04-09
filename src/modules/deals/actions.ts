@@ -473,7 +473,7 @@ export async function updateReminder(
 ): Promise<ActionResult> {
   if (!(await getCanEdit())) return { success: false, error: "Unauthorized" }
   try {
-    const updateData: { note?: string; dueAt?: Date; status?: string; updatedAt: Date } = {
+    const updateData: { note?: string; dueAt?: Date | string; status?: string; updatedAt: Date } = {
       ...data,
       updatedAt: new Date(),
     }
@@ -482,7 +482,7 @@ export async function updateReminder(
     }
     await db
       .update(dealReminders)
-      .set(updateData)
+      .set(updateData as { note?: string; dueAt?: Date; status?: string; updatedAt: Date })
       .where(eq(dealReminders.id, reminderId))
     revalidatePath("/deals")
     revalidatePath("/reminders")
