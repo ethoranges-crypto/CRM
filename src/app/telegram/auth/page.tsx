@@ -1,16 +1,10 @@
 import { AuthForm } from "@/modules/telegram/components/auth-form"
-import { checkTelegramAuth } from "@/modules/telegram/actions"
 import { getCanEdit } from "@/lib/auth"
 import { redirect } from "next/navigation"
 
 export default async function TelegramAuthPage() {
-  let isAuthed = false
-  try {
-    isAuthed = await checkTelegramAuth()
-  } catch {
-    isAuthed = false
-  }
   const canEdit = await getCanEdit()
+  const isAuthed = !!(process.env.TG_SESSION && process.env.TG_SESSION.length > 10)
 
   if (isAuthed) redirect("/telegram")
   if (!canEdit) redirect("/telegram")

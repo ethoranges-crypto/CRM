@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { sendTelegramCode, signInTelegram } from "../actions"
 
 type Step = "phone" | "code" | "password" | "done"
 
@@ -15,46 +14,60 @@ export function AuthForm() {
   const [phoneCodeHash, setPhoneCodeHash] = useState("")
   const [sessionString, setSessionString] = useState("")
   const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
 
   async function handleSendCode() {
     setError("")
+    setLoading(true)
     try {
-      const result = await sendTelegramCode(phone)
-      setPhoneCodeHash(result.phoneCodeHash)
+      const res = await fetch("/api/telegram/send-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to send code")
+      setPhoneCodeHash(data.phoneCodeHash)
       setStep("code")
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to send code")
+    } finally {
+      setLoading(false)
     }
   }
 
   async function handleSignIn() {
     setError("")
+    setLoading(true)
     try {
-      const result = await signInTelegram(
-        phone,
-        code,
-        phoneCodeHash,
-        password || undefined
-      )
-      setSessionString(result.session)
+      const res = await fetch("/api/telegram/sign-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, code, phoneCodeHash, password: password || undefined }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        if (data.error?.includes("SESSION_PASSWORD_NEEDED")) {
+          setStep("password")
+          return
+        }
+        throw new Error(data.error || "Sign in failed")
+      }
+      setSessionString(data.session)
       setStep("done")
     } catch (err: unknown) {
-      const error = err as { message?: string }
-      if (error.message?.includes("SESSION_PASSWORD_NEEDED")) {
-        setStep("password")
-      } else {
-        setError(error.message || "Sign in failed")
-      }
+      setError(err instanceof Error ? err.message : "Sign in failed")
+    } finally {
+      setLoading(false)
     }
   }
 
   if (step === "done") {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-green-600">Authenticated successfully.</p>
+        <p className="text-sm text-green-600">Authenticated successfully!</p>
         <p className="text-xs text-muted-foreground">
-          Add this to your Vercel environment variables as TG_SESSION, then
-          redeploy:
+          Add this to your Vercel environment variables as TG_SESSION, then redeploy:
         </p>
         <code className="block break-all rounded bg-muted p-2 text-xs">
           {sessionString}
@@ -72,23 +85,26 @@ export function AuthForm() {
           <Input
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="+1234567890"
+            placeholder="+447599456221"
           />
-          <Button onClick={handleSendCode} className="w-full">
-            Send Code
+          <Button onClick={handleSendCode} className="w-full" disabled={loading}>
+            {loading ? "Sending..." : "Send Code"}
           </Button>
         </>
       )}
 
       {step === "code" && (
         <>
+          <p className="text-sm text-muted-foreground">
+            Enter the code Telegram sent to your phone.
+          </p>
           <Input
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="Enter code from Telegram"
+            placeholder="12345"
           />
-          <Button onClick={handleSignIn} className="w-full">
-            Verify
+          <Button onClick={handleSignIn} className="w-full" disabled={loading}>
+            {loading ? "Verifying..." : "Verify"}
           </Button>
         </>
       )}
@@ -102,8 +118,8 @@ export function AuthForm() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="2FA Password"
           />
-          <Button onClick={handleSignIn} className="w-full">
-            Submit
+          <Button onClick={handleSignIn} className="w-full" disabled={loading}>
+            {loading ? "Submitting..." : "Submit"}
           </Button>
         </>
       )}

@@ -1,4 +1,4 @@
-import { checkTelegramAuth, getGroups } from "@/modules/telegram/actions"
+import { getGroups } from "@/modules/telegram/actions"
 import { GroupCard } from "@/modules/telegram/components/group-card"
 import { SyncGroupButton } from "@/modules/telegram/components/sync-group-button"
 import { Button } from "@/components/ui/button"
@@ -8,10 +8,8 @@ import { getCanEdit } from "@/lib/auth"
 export const dynamic = "force-dynamic"
 
 export default async function GroupsPage() {
-  const [isAuthed, canEdit] = await Promise.all([
-    checkTelegramAuth(),
-    getCanEdit(),
-  ])
+  const canEdit = await getCanEdit()
+  const isAuthed = !!(process.env.TG_SESSION && process.env.TG_SESSION.length > 10)
 
   if (!isAuthed) {
     return (
@@ -44,9 +42,7 @@ export default async function GroupsPage() {
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <p className="text-sm text-muted-foreground">
               No groups synced yet.{" "}
-              {canEdit
-                ? 'Click "Sync All Groups" to discover your groups, or enter a group username manually.'
-                : ""}
+              {canEdit ? 'Click "Sync All Groups" to discover your groups.' : ""}
             </p>
           </div>
         ) : (

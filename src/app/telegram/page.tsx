@@ -1,4 +1,4 @@
-import { getContacts, checkTelegramAuth } from "@/modules/telegram/actions"
+import { getContacts } from "@/modules/telegram/actions"
 import { ContactsTable } from "@/modules/telegram/components/contacts-table"
 import { SyncButton } from "@/modules/telegram/components/sync-button"
 import { Button } from "@/components/ui/button"
@@ -8,10 +8,10 @@ import { getCanEdit } from "@/lib/auth"
 export const dynamic = "force-dynamic"
 
 export default async function TelegramPage() {
-  const [isAuthed, canEdit] = await Promise.all([
-    checkTelegramAuth(),
-    getCanEdit(),
-  ])
+  const [canEdit] = await Promise.all([getCanEdit()])
+  // Use session presence as a lightweight auth check — avoids connecting
+  // to Telegram during server render which causes bundling issues
+  const isAuthed = !!(process.env.TG_SESSION && process.env.TG_SESSION.length > 10)
 
   if (!isAuthed) {
     return (
