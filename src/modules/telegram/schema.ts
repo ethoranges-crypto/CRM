@@ -8,6 +8,7 @@ export const tgContacts = sqliteTable("tg_contacts", {
   phone: text("phone"),
   company: text("company"),
   bio: text("bio"),
+  accessHash: text("access_hash"),
   lastOnline: integer("last_online", { mode: "timestamp" }),
   isContact: integer("is_contact", { mode: "boolean" }).default(false),
   syncedAt: integer("synced_at", { mode: "timestamp" })

@@ -7,26 +7,6 @@ import { getTelegramClient } from "./client"
 import { Api } from "telegram"
 import { eq } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
-import { parseCompanyFromBio } from "./bio-parser"
-
-async function fetchUserBio(
-  client: ReturnType<typeof getTelegramClient>,
-  user: Api.User
-): Promise<string | null> {
-  try {
-    const fullUser = await client.invoke(
-      new Api.users.GetFullUser({
-        id: new Api.InputUser({
-          userId: user.id,
-          accessHash: user.accessHash ?? (BigInt(0) as unknown as Api.long),
-        }),
-      })
-    )
-    return fullUser.fullUser?.about || null
-  } catch {
-    return null
-  }
-}
 
 export async function syncContacts() {
   if (!(await getCanEdit())) throw new Error("Unauthorized")
@@ -116,15 +96,7 @@ export async function syncGroupMembers(groupEntity: string) {
 
     for (const user of participants) {
       if (user instanceof Api.User) {
-        const bio = await fetchUserBio(client, user)
-        const parsedCompany = parseCompanyFromBio(bio)
-
-        const existingRows = await db
-          .select({ company: tgContacts.company })
-          .from(tgContacts)
-          .where(eq(tgContacts.id, user.id.toString()))
-
-        const company = existingRows[0]?.company || parsedCompany || null
+        const accessHash = user.accessHash?.toString() ?? "0"
 
         await db
           .insert(tgContacts)
@@ -134,8 +106,7 @@ export async function syncGroupMembers(groupEntity: string) {
             lastName: user.lastName || null,
             username: user.username || null,
             phone: user.phone || null,
-            bio,
-            company,
+            accessHash,
             lastOnline:
               user.status instanceof Api.UserStatusOffline
                 ? new Date(user.status.wasOnline * 1000)
@@ -148,29 +119,20 @@ export async function syncGroupMembers(groupEntity: string) {
               firstName: user.firstName || null,
               lastName: user.lastName || null,
               username: user.username || null,
-              bio,
-              company,
+              accessHash,
               lastOnline:
                 user.status instanceof Api.UserStatusOffline
                   ? new Date(user.status.wasOnline * 1000)
                   : null,
               syncedAt: new Date(),
+              // bio and company are NOT overwritten — preserve existing indexed values
             },
           })
 
-        const existingLinks = await db
-          .select()
-          .from(tgContactGroups)
-          .where(
-            eq(tgContactGroups.contactId, user.id.toString())
-          )
-
-        if (!existingLinks.find((r) => r.groupId === groupId)) {
-          await db
-            .insert(tgContactGroups)
-            .values({ contactId: user.id.toString(), groupId })
-            .onConflictDoNothing()
-        }
+        await db
+          .insert(tgContactGroups)
+          .values({ contactId: user.id.toString(), groupId })
+          .onConflictDoNothing()
       }
     }
 

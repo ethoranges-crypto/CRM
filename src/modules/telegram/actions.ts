@@ -5,7 +5,7 @@ import { getCanEdit } from "@/lib/auth"
 import { tgContacts, tgGroups, tgContactGroups } from "./schema"
 import { getTelegramClient } from "./client"
 import { Api } from "telegram"
-import { like, or, eq, and } from "drizzle-orm"
+import { like, or, eq, and, count, isNotNull } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import type { TgContact } from "./types"
 
@@ -144,6 +144,21 @@ export async function updateContactCompany(
     console.error("updateContactCompany error:", err)
     return { success: false as const, error: String(err) }
   }
+}
+
+export async function getGroupIndexStats(groupId: string): Promise<{ total: number; indexed: number }> {
+  const [totalRow] = await db
+    .select({ c: count() })
+    .from(tgContactGroups)
+    .where(eq(tgContactGroups.groupId, groupId))
+
+  const [indexedRow] = await db
+    .select({ c: count() })
+    .from(tgContacts)
+    .innerJoin(tgContactGroups, eq(tgContacts.id, tgContactGroups.contactId))
+    .where(and(eq(tgContactGroups.groupId, groupId), isNotNull(tgContacts.bio)))
+
+  return { total: totalRow?.c ?? 0, indexed: indexedRow?.c ?? 0 }
 }
 
 export async function deleteGroup(groupId: string) {

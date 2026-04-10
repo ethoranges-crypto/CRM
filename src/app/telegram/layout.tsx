@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 const tabs = [
   { label: "Contacts", href: "/telegram" },
   { label: "Groups", href: "/telegram/groups" },
+  { label: "Search", href: "/telegram/search" },
 ]
 
 export default function TelegramLayout({
