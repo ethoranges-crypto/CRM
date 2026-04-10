@@ -27,8 +27,8 @@ export function AuthForm() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to send code")
+      // sessionString is stored server-side in a cookie by the API
       setPhoneCodeHash(data.phoneCodeHash)
-      setSessionString(data.sessionString)
       setStep("code")
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to send code")
@@ -44,7 +44,8 @@ export function AuthForm() {
       const res = await fetch("/api/telegram/sign-in", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, code, phoneCodeHash, sessionString, password: password || undefined }),
+        // sessionString is read from the cookie server-side — not sent by the client
+        body: JSON.stringify({ phone, code, phoneCodeHash, password: password || undefined }),
       })
       const data = await res.json()
       if (!res.ok) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getTelegramClient } from "@/modules/telegram/client"
+import { TelegramClient, sessions } from "telegram"
 import { getCanEdit } from "@/lib/auth"
 
 export async function POST(request: NextRequest) {
@@ -8,8 +8,15 @@ export async function POST(request: NextRequest) {
   }
   try {
     const { phone } = await request.json()
-    const client = getTelegramClient()
+
+    const client = new TelegramClient(
+      new sessions.StringSession(""),
+      parseInt(process.env.TG_API_ID!),
+      process.env.TG_API_HASH!,
+      { connectionRetries: 3 }
+    )
     await client.connect()
+
     const result = await client.sendCode(
       {
         apiId: parseInt(process.env.TG_API_ID!),
@@ -17,7 +24,18 @@ export async function POST(request: NextRequest) {
       },
       phone
     )
-    return NextResponse.json({ phoneCodeHash: result.phoneCodeHash })
+
+    // Save session state server-side in a cookie — never expose it to the client
+    const sessionString = client.session.save() as unknown as string
+
+    const response = NextResponse.json({ phoneCodeHash: result.phoneCodeHash })
+    response.cookies.set("tg_pending_session", sessionString, {
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 600, // 10 minutes
+      path: "/",
+    })
+    return response
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ error: msg }, { status: 500 })

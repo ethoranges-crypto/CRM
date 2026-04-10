@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getTelegramClient } from "@/modules/telegram/client"
+import { TelegramClient, sessions, Api } from "telegram"
 import { getCanEdit } from "@/lib/auth"
-import { Api } from "telegram"
 
 export async function POST(request: NextRequest) {
   if (!(await getCanEdit())) {
@@ -9,7 +8,16 @@ export async function POST(request: NextRequest) {
   }
   try {
     const { phone, code, phoneCodeHash, password } = await request.json()
-    const client = getTelegramClient()
+
+    // Read the session that was set server-side by send-code — never trust the client for this
+    const sessionString = request.cookies.get("tg_pending_session")?.value ?? ""
+
+    const client = new TelegramClient(
+      new sessions.StringSession(sessionString),
+      parseInt(process.env.TG_API_ID!),
+      process.env.TG_API_HASH!,
+      { connectionRetries: 3 }
+    )
     await client.connect()
 
     try {
@@ -34,8 +42,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const session = client.session.save() as unknown as string
-    return NextResponse.json({ session })
+    const finalSession = client.session.save() as unknown as string
+
+    const response = NextResponse.json({ session: finalSession })
+    // Clear the pending session cookie
+    response.cookies.set("tg_pending_session", "", { maxAge: 0, path: "/" })
+    return response
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ error: msg }, { status: 500 })
