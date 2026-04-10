@@ -40,26 +40,17 @@ export async function syncContacts() {
   if (result instanceof Api.contacts.Contacts) {
     const users = result.users.filter((u): u is Api.User => u instanceof Api.User)
 
-    // Fetch bios in parallel (5 at a time) instead of sequentially
-    const CONCURRENCY = 5
-    const bios: (string | null)[] = new Array(users.length).fill(null)
-    for (let i = 0; i < users.length; i += CONCURRENCY) {
-      const batch = users.slice(i, i + CONCURRENCY)
-      const results = await Promise.all(batch.map((u) => fetchUserBio(client, u)))
-      results.forEach((bio, j) => { bios[i + j] = bio })
-    }
-
-    for (let i = 0; i < users.length; i++) {
-      const user = users[i]
-      const bio = bios[i]
-      const parsedCompany = parseCompanyFromBio(bio)
-
+    // Bulk insert/update using only data already in the GetContacts response —
+    // no per-user bio API calls so this scales to hundreds of contacts easily.
+    for (const user of users) {
       const existingRows = await db
-        .select({ company: tgContacts.company })
+        .select({ bio: tgContacts.bio, company: tgContacts.company })
         .from(tgContacts)
         .where(eq(tgContacts.id, user.id.toString()))
 
-      const company = existingRows[0]?.company || parsedCompany || null
+      // Preserve any bio/company already stored; don't overwrite with null
+      const existingBio = existingRows[0]?.bio ?? null
+      const existingCompany = existingRows[0]?.company ?? null
 
       await db
         .insert(tgContacts)
@@ -69,8 +60,8 @@ export async function syncContacts() {
           lastName: user.lastName || null,
           username: user.username || null,
           phone: user.phone || null,
-          bio,
-          company,
+          bio: existingBio,
+          company: existingCompany,
           isContact: true,
           lastOnline:
             user.status instanceof Api.UserStatusOffline
@@ -85,14 +76,13 @@ export async function syncContacts() {
             lastName: user.lastName || null,
             username: user.username || null,
             phone: user.phone || null,
-            bio,
-            company,
             isContact: true,
             lastOnline:
               user.status instanceof Api.UserStatusOffline
                 ? new Date(user.status.wasOnline * 1000)
                 : null,
             syncedAt: new Date(),
+            // bio and company are NOT overwritten — preserve manual edits
           },
         })
     }
@@ -215,12 +205,8 @@ export async function syncAllGroups() {
 
   const dialogs = await client.getDialogs({})
 
-  const groups: {
-    id: string
-    title: string
-    entity: Api.Chat | Api.Channel
-  }[] = []
-
+  // Save group metadata only — member syncing is per-group on demand.
+  // Auto-syncing members for hundreds of groups would take many minutes.
   for (const dialog of dialogs) {
     const entity = dialog.entity
     if (entity instanceof Api.Chat || entity instanceof Api.Channel) {
@@ -238,97 +224,6 @@ export async function syncAllGroups() {
           target: tgGroups.id,
           set: { title, memberCount, syncedAt: new Date() },
         })
-
-      groups.push({ id: groupId, title, entity })
-    }
-  }
-
-  for (const group of groups) {
-    try {
-      const participants = await client.getParticipants(group.entity, {
-        limit: 500,
-      })
-
-      for (const user of participants) {
-        if (user instanceof Api.User) {
-          const bio = await fetchUserBio(client, user)
-          const parsedCompany = parseCompanyFromBio(bio)
-
-          const existingRows = await db
-            .select({ company: tgContacts.company })
-            .from(tgContacts)
-            .where(eq(tgContacts.id, user.id.toString()))
-
-          const company = existingRows[0]?.company || parsedCompany || null
-
-          await db
-            .insert(tgContacts)
-            .values({
-              id: user.id.toString(),
-              firstName: user.firstName || null,
-              lastName: user.lastName || null,
-              username: user.username || null,
-              phone: user.phone || null,
-              bio,
-              company,
-              lastOnline:
-                user.status instanceof Api.UserStatusOffline
-                  ? new Date(user.status.wasOnline * 1000)
-                  : null,
-              syncedAt: new Date(),
-            })
-            .onConflictDoUpdate({
-              target: tgContacts.id,
-              set: {
-                firstName: user.firstName || null,
-                lastName: user.lastName || null,
-                username: user.username || null,
-                bio,
-                company,
-                lastOnline:
-                  user.status instanceof Api.UserStatusOffline
-                    ? new Date(user.status.wasOnline * 1000)
-                    : null,
-                syncedAt: new Date(),
-              },
-            })
-
-          const existingLinks = await db
-            .select()
-            .from(tgContactGroups)
-            .where(eq(tgContactGroups.contactId, user.id.toString()))
-
-          if (!existingLinks.find((r) => r.groupId === group.id)) {
-            await db
-              .insert(tgContactGroups)
-              .values({ contactId: user.id.toString(), groupId: group.id })
-              .onConflictDoNothing()
-          }
-        }
-      }
-
-      await db
-        .update(tgGroups)
-        .set({ memberCount: participants.length })
-        .where(eq(tgGroups.id, group.id))
-    } catch (err: unknown) {
-      const error = err as { errorMessage?: string; message?: string }
-      const errMsg = error.errorMessage || error.message || ""
-      if (
-        errMsg.includes("CHAT_ADMIN_REQUIRED") ||
-        errMsg.includes("CHANNEL_PRIVATE") ||
-        errMsg.includes("CHANNEL_INVALID") ||
-        errMsg.includes("CHAT_WRITE_FORBIDDEN") ||
-        errMsg.includes("USER_NOT_PARTICIPANT")
-      ) {
-        console.warn(
-          `Skipping member sync for "${group.title}" (${group.id}): ${errMsg}`
-        )
-      } else {
-        console.error(
-          `Error syncing members for "${group.title}" (${group.id}): ${errMsg}`
-        )
-      }
     }
   }
 
