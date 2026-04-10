@@ -38,22 +38,49 @@ export async function syncContacts() {
   )
 
   if (result instanceof Api.contacts.Contacts) {
-    for (const user of result.users) {
-      if (user instanceof Api.User) {
-        const bio = await fetchUserBio(client, user)
-        const parsedCompany = parseCompanyFromBio(bio)
+    const users = result.users.filter((u): u is Api.User => u instanceof Api.User)
 
-        const existingRows = await db
-          .select({ company: tgContacts.company })
-          .from(tgContacts)
-          .where(eq(tgContacts.id, user.id.toString()))
+    // Fetch bios in parallel (5 at a time) instead of sequentially
+    const CONCURRENCY = 5
+    const bios: (string | null)[] = new Array(users.length).fill(null)
+    for (let i = 0; i < users.length; i += CONCURRENCY) {
+      const batch = users.slice(i, i + CONCURRENCY)
+      const results = await Promise.all(batch.map((u) => fetchUserBio(client, u)))
+      results.forEach((bio, j) => { bios[i + j] = bio })
+    }
 
-        const company = existingRows[0]?.company || parsedCompany || null
+    for (let i = 0; i < users.length; i++) {
+      const user = users[i]
+      const bio = bios[i]
+      const parsedCompany = parseCompanyFromBio(bio)
 
-        await db
-          .insert(tgContacts)
-          .values({
-            id: user.id.toString(),
+      const existingRows = await db
+        .select({ company: tgContacts.company })
+        .from(tgContacts)
+        .where(eq(tgContacts.id, user.id.toString()))
+
+      const company = existingRows[0]?.company || parsedCompany || null
+
+      await db
+        .insert(tgContacts)
+        .values({
+          id: user.id.toString(),
+          firstName: user.firstName || null,
+          lastName: user.lastName || null,
+          username: user.username || null,
+          phone: user.phone || null,
+          bio,
+          company,
+          isContact: true,
+          lastOnline:
+            user.status instanceof Api.UserStatusOffline
+              ? new Date(user.status.wasOnline * 1000)
+              : null,
+          syncedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: tgContacts.id,
+          set: {
             firstName: user.firstName || null,
             lastName: user.lastName || null,
             username: user.username || null,
@@ -66,25 +93,8 @@ export async function syncContacts() {
                 ? new Date(user.status.wasOnline * 1000)
                 : null,
             syncedAt: new Date(),
-          })
-          .onConflictDoUpdate({
-            target: tgContacts.id,
-            set: {
-              firstName: user.firstName || null,
-              lastName: user.lastName || null,
-              username: user.username || null,
-              phone: user.phone || null,
-              bio,
-              company,
-              isContact: true,
-              lastOnline:
-                user.status instanceof Api.UserStatusOffline
-                  ? new Date(user.status.wasOnline * 1000)
-                  : null,
-              syncedAt: new Date(),
-            },
-          })
-      }
+          },
+        })
     }
   }
 

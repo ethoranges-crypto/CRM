@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { getCanEdit } from "@/lib/auth"
 import { syncAllGroups, syncGroupMembers } from "@/modules/telegram/sync"
 
+// Extend Vercel function timeout to 60 seconds (max on Hobby plan)
+export const maxDuration = 60
+
 export async function POST(request: NextRequest) {
   if (!(await getCanEdit())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
