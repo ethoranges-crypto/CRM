@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getTelegramClient } from "@/modules/telegram/client"
 import { getCanEdit } from "@/lib/auth"
-import { Api } from "telegram/tl"
+import { Api } from "telegram"
 
 export async function POST(request: NextRequest) {
   if (!(await getCanEdit())) {

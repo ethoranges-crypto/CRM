@@ -1,8 +1,10 @@
-import { TelegramClient } from "telegram"
-import { StringSession } from "telegram/sessions"
+import { TelegramClient, sessions } from "telegram"
 
-// Create a fresh client per call — serverless functions don't share memory
-// reliably across requests, and a stale singleton causes instanceof failures
+// Import StringSession via the main "telegram" export — NOT "telegram/sessions"
+// This ensures TelegramClient and StringSession come from the same module
+// instance, so the instanceof check inside TelegramClient passes correctly.
+const { StringSession } = sessions
+
 export function getTelegramClient(): TelegramClient {
   const apiId = parseInt(process.env.TG_API_ID || "0")
   const apiHash = process.env.TG_API_HASH || ""
