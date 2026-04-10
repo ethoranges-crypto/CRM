@@ -28,6 +28,7 @@ export function AuthForm() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to send code")
       setPhoneCodeHash(data.phoneCodeHash)
+      setSessionString(data.sessionString)
       setStep("code")
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to send code")
@@ -43,7 +44,7 @@ export function AuthForm() {
       const res = await fetch("/api/telegram/sign-in", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, code, phoneCodeHash, password: password || undefined }),
+        body: JSON.stringify({ phone, code, phoneCodeHash, sessionString, password: password || undefined }),
       })
       const data = await res.json()
       if (!res.ok) {
