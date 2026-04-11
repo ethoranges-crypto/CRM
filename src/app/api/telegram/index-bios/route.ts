@@ -47,8 +47,8 @@ export async function POST(request: NextRequest) {
           const fullUser = await client.invoke(
             new Api.users.GetFullUser({
               id: new Api.InputUser({
-                userId: BigInt(id),
-                accessHash: BigInt(accessHash ?? "0"),
+                userId: BigInt(id) as unknown as Api.long,
+                accessHash: BigInt(accessHash ?? "0") as unknown as Api.long,
               }),
             })
           )
