@@ -27,7 +27,7 @@ export function SyncMembersButton({ groupId, totalMembers, syncedMembers }: Sync
     setError("")
     setDone(false)
     stopRef.current = false
-    let offset = synced // resume from where we left off
+    let offset = 0 // always start from the beginning; onConflictDoNothing prevents duplicates
 
     while (!stopRef.current) {
       try {

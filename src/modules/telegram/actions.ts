@@ -3,96 +3,52 @@
 import { db } from "@/lib/db"
 import { getCanEdit } from "@/lib/auth"
 import { tgContacts, tgGroups, tgContactGroups } from "./schema"
-import { getTelegramClient } from "./client"
-import { Api } from "telegram"
 import { like, or, eq, and, count, isNotNull } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import type { TgContact } from "./types"
-
-// --- Auth actions ---
-
-export async function checkTelegramAuth(): Promise<boolean> {
-  const apiId = process.env.TG_API_ID
-  const apiHash = process.env.TG_API_HASH
-  if (!apiId || !apiHash || apiId === "0") return false
-
-  try {
-    const client = getTelegramClient()
-    await client.connect()
-    return await client.isUserAuthorized()
-  } catch {
-    return false
-  }
-}
-
-export async function sendTelegramCode(
-  phone: string
-): Promise<{ phoneCodeHash: string }> {
-  if (!(await getCanEdit())) throw new Error("Unauthorized")
-  const client = getTelegramClient()
-  await client.connect()
-  const result = await client.sendCode(
-    {
-      apiId: parseInt(process.env.TG_API_ID!),
-      apiHash: process.env.TG_API_HASH!,
-    },
-    phone
-  )
-  return { phoneCodeHash: result.phoneCodeHash }
-}
-
-export async function signInTelegram(
-  phone: string,
-  code: string,
-  phoneCodeHash: string,
-  password?: string
-): Promise<{ session: string }> {
-  if (!(await getCanEdit())) throw new Error("Unauthorized")
-  const client = getTelegramClient()
-
-  try {
-    await client.invoke(
-      new Api.auth.SignIn({
-        phoneNumber: phone,
-        phoneCodeHash,
-        phoneCode: code,
-      })
-    )
-  } catch (err: unknown) {
-    const error = err as { errorMessage?: string }
-    if (error.errorMessage === "SESSION_PASSWORD_NEEDED" && password) {
-      await client.signInWithPassword(
-        {
-          apiId: parseInt(process.env.TG_API_ID!),
-          apiHash: process.env.TG_API_HASH!,
-        },
-        {
-          password: async () => password,
-          onError: (err: Error) => {
-            throw err
-          },
-        }
-      )
-    } else {
-      throw err
-    }
-  }
-
-  const sessionString = client.session.save() as unknown as string
-  return { session: sessionString }
-}
-
-// --- Data actions ---
 
 export async function getContacts(filters?: {
   search?: string
   groupId?: string
 }): Promise<TgContact[]> {
-  let contacts: TgContact[]
+  if (filters?.groupId) {
+    // Query directly with a join — avoids loading all contacts into memory
+    const term = filters.search ? `%${filters.search}%` : null
+    const rows = await db
+      .select({
+        id: tgContacts.id,
+        firstName: tgContacts.firstName,
+        lastName: tgContacts.lastName,
+        username: tgContacts.username,
+        phone: tgContacts.phone,
+        company: tgContacts.company,
+        bio: tgContacts.bio,
+        accessHash: tgContacts.accessHash,
+        lastOnline: tgContacts.lastOnline,
+        isContact: tgContacts.isContact,
+        syncedAt: tgContacts.syncedAt,
+      })
+      .from(tgContacts)
+      .innerJoin(tgContactGroups, eq(tgContacts.id, tgContactGroups.contactId))
+      .where(
+        term
+          ? and(
+              eq(tgContactGroups.groupId, filters.groupId),
+              or(
+                like(tgContacts.firstName, term),
+                like(tgContacts.lastName, term),
+                like(tgContacts.username, term),
+                like(tgContacts.company, term)
+              )
+            )
+          : eq(tgContactGroups.groupId, filters.groupId)
+      )
+    return rows as TgContact[]
+  }
 
   if (filters?.search) {
     const term = `%${filters.search}%`
-    contacts = await db
+    return db
       .select()
       .from(tgContacts)
       .where(
@@ -103,21 +59,9 @@ export async function getContacts(filters?: {
           like(tgContacts.company, term)
         )
       )
-  } else {
-    contacts = await db.select().from(tgContacts)
   }
 
-  if (filters?.groupId) {
-    const groupContactRows = await db
-      .select({ contactId: tgContactGroups.contactId })
-      .from(tgContactGroups)
-      .where(eq(tgContactGroups.groupId, filters.groupId))
-
-    const groupContactIds = groupContactRows.map((r) => r.contactId)
-    return contacts.filter((c) => groupContactIds.includes(c.id))
-  }
-
-  return contacts
+  return db.select().from(tgContacts)
 }
 
 export async function getGroups() {
@@ -125,47 +69,35 @@ export async function getGroups() {
 }
 
 export async function getGroupById(id: string) {
-  const rows = await db.select().from(tgGroups).where(eq(tgGroups.id, id))
-  return rows[0] ?? null
+  const [row] = await db.select().from(tgGroups).where(eq(tgGroups.id, id))
+  return row ?? null
 }
 
-export async function updateContactCompany(
-  contactId: string,
-  company: string
-) {
+export async function getGroupIndexStats(groupId: string): Promise<{ total: number; indexed: number }> {
+  const [[totalRow], [indexedRow]] = await Promise.all([
+    db.select({ c: count() }).from(tgContactGroups).where(eq(tgContactGroups.groupId, groupId)),
+    db
+      .select({ c: count() })
+      .from(tgContacts)
+      .innerJoin(tgContactGroups, eq(tgContacts.id, tgContactGroups.contactId))
+      .where(and(eq(tgContactGroups.groupId, groupId), isNotNull(tgContacts.bio))),
+  ])
+  return { total: totalRow?.c ?? 0, indexed: indexedRow?.c ?? 0 }
+}
+
+export async function updateContactCompany(contactId: string, company: string) {
   if (!(await getCanEdit())) return { success: false as const, error: "Unauthorized" }
   try {
-    await db
-      .update(tgContacts)
-      .set({ company })
-      .where(eq(tgContacts.id, contactId))
+    await db.update(tgContacts).set({ company }).where(eq(tgContacts.id, contactId))
     return { success: true as const }
   } catch (err) {
-    console.error("updateContactCompany error:", err)
     return { success: false as const, error: String(err) }
   }
 }
 
-export async function getGroupIndexStats(groupId: string): Promise<{ total: number; indexed: number }> {
-  const [totalRow] = await db
-    .select({ c: count() })
-    .from(tgContactGroups)
-    .where(eq(tgContactGroups.groupId, groupId))
-
-  const [indexedRow] = await db
-    .select({ c: count() })
-    .from(tgContacts)
-    .innerJoin(tgContactGroups, eq(tgContacts.id, tgContactGroups.contactId))
-    .where(and(eq(tgContactGroups.groupId, groupId), isNotNull(tgContacts.bio)))
-
-  return { total: totalRow?.c ?? 0, indexed: indexedRow?.c ?? 0 }
-}
-
 export async function deleteGroup(groupId: string) {
   if (!(await getCanEdit())) return
-  await db
-    .delete(tgContactGroups)
-    .where(eq(tgContactGroups.groupId, groupId))
+  await db.delete(tgContactGroups).where(eq(tgContactGroups.groupId, groupId))
   await db.delete(tgGroups).where(eq(tgGroups.id, groupId))
   revalidatePath("/telegram/groups")
 }

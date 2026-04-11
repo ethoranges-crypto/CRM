@@ -16,10 +16,12 @@ export async function POST(request: NextRequest) {
     const { groupId, offset = 0, limit = 200 } = await request.json()
     if (!groupId) return NextResponse.json({ error: "groupId required" }, { status: 400 })
 
-    // Look up group in DB so we have the access hash
-    const groupRows = await db.select().from(tgGroups).where(eq(tgGroups.id, groupId))
-    const group = groupRows[0]
-    if (!group) return NextResponse.json({ error: "Group not found" }, { status: 404 })
+    const [group] = await db.select().from(tgGroups).where(eq(tgGroups.id, groupId))
+    if (!group) return NextResponse.json({ error: "Group not found — re-run Sync All Groups first" }, { status: 404 })
+
+    if (!group.accessHash || group.accessHash === "0") {
+      return NextResponse.json({ error: "No access hash stored for this group. Run Sync All Groups first." }, { status: 400 })
+    }
 
     const client = getTelegramClient()
     await client.connect()
@@ -27,24 +29,27 @@ export async function POST(request: NextRequest) {
     let users: Api.User[] = []
     let total = group.memberCount ?? 0
 
-    if (group.isChannel && group.accessHash && group.accessHash !== "0") {
-      // Channel/supergroup — supports paginated GetParticipants
+    if (group.isChannel) {
+      // Supergroup / channel — paginated via channels.GetParticipants
+      // ChannelParticipantsRecent returns recently-active members in order.
+      // ChannelParticipantsSearch with q="" is a NAME search returning 0 results — do NOT use it.
       const result = await client.invoke(
         new Api.channels.GetParticipants({
           channel: new Api.InputChannel({
             channelId: BigInt(groupId),
             accessHash: BigInt(group.accessHash),
           }),
-          filter: new Api.ChannelParticipantsSearch({ q: "" }),
+          filter: new Api.ChannelParticipantsRecent({}),
           offset,
           limit,
           hash: BigInt(0),
         })
       ) as Api.channels.ChannelParticipants
+
       total = result.count
       users = result.users.filter((u): u is Api.User => u instanceof Api.User)
     } else {
-      // Regular chat — get all members in one shot (max ~200)
+      // Regular group chat — one-shot, max ~200 members
       const result = await client.invoke(
         new Api.messages.GetFullChat({ chatId: BigInt(groupId) })
       )
@@ -53,51 +58,56 @@ export async function POST(request: NextRequest) {
       total = allUsers.length
     }
 
-    // Upsert each user into tgContacts and link to this group
-    for (const user of users) {
-      const accessHash = user.accessHash?.toString() ?? "0"
-      await db
-        .insert(tgContacts)
-        .values({
-          id: user.id.toString(),
-          firstName: user.firstName || null,
-          lastName: user.lastName || null,
-          username: user.username || null,
-          phone: user.phone || null,
-          accessHash,
-          lastOnline:
-            user.status instanceof Api.UserStatusOffline
-              ? new Date(user.status.wasOnline * 1000)
-              : null,
-          syncedAt: new Date(),
+    // Upsert contacts and group links in parallel (10 at a time)
+    const CONCURRENCY = 10
+    for (let i = 0; i < users.length; i += CONCURRENCY) {
+      await Promise.all(
+        users.slice(i, i + CONCURRENCY).map(async (user) => {
+          const accessHash = user.accessHash?.toString() ?? "0"
+          await db
+            .insert(tgContacts)
+            .values({
+              id: user.id.toString(),
+              firstName: user.firstName || null,
+              lastName: user.lastName || null,
+              username: user.username || null,
+              phone: user.phone || null,
+              accessHash,
+              lastOnline:
+                user.status instanceof Api.UserStatusOffline
+                  ? new Date(user.status.wasOnline * 1000)
+                  : null,
+              syncedAt: new Date(),
+            })
+            .onConflictDoUpdate({
+              target: tgContacts.id,
+              set: {
+                firstName: user.firstName || null,
+                lastName: user.lastName || null,
+                username: user.username || null,
+                accessHash,
+                lastOnline:
+                  user.status instanceof Api.UserStatusOffline
+                    ? new Date(user.status.wasOnline * 1000)
+                    : null,
+                syncedAt: new Date(),
+                // bio and company intentionally NOT updated — preserve indexed values
+              },
+            })
+          await db
+            .insert(tgContactGroups)
+            .values({ contactId: user.id.toString(), groupId })
+            .onConflictDoNothing()
         })
-        .onConflictDoUpdate({
-          target: tgContacts.id,
-          set: {
-            firstName: user.firstName || null,
-            lastName: user.lastName || null,
-            username: user.username || null,
-            accessHash,
-            lastOnline:
-              user.status instanceof Api.UserStatusOffline
-                ? new Date(user.status.wasOnline * 1000)
-                : null,
-            syncedAt: new Date(),
-          },
-        })
-
-      await db
-        .insert(tgContactGroups)
-        .values({ contactId: user.id.toString(), groupId })
-        .onConflictDoNothing()
+      )
     }
 
-    // Update stored member count if we got a real total from Telegram
     if (total > 0) {
       await db.update(tgGroups).set({ memberCount: total }).where(eq(tgGroups.id, groupId))
     }
 
     const nextOffset = offset + users.length
+    // Done when Telegram returns fewer than requested (end of list)
     const done = users.length < limit || nextOffset >= total
 
     return NextResponse.json({ synced: users.length, total, nextOffset, done })
