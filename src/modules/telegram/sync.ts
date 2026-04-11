@@ -167,28 +167,40 @@ export async function syncAllGroups() {
 
   const dialogs = await client.getDialogs({})
 
-  // Save group metadata only — member syncing is per-group on demand.
-  // Auto-syncing members for hundreds of groups would take many minutes.
+  // Collect all group entities first, then upsert in parallel
+  const groupRows: {
+    id: string; title: string; memberCount: number | null
+    accessHash: string; isChannel: boolean
+  }[] = []
+
   for (const dialog of dialogs) {
     const entity = dialog.entity
     if (entity instanceof Api.Chat || entity instanceof Api.Channel) {
-      const groupId = entity.id.toString()
-      const title = entity.title || "Untitled"
       const isChannel = entity instanceof Api.Channel
-      const accessHash = isChannel ? (entity.accessHash?.toString() ?? "0") : "0"
-      const memberCount =
-        "participantsCount" in entity
-          ? (entity.participantsCount ?? null)
-          : null
-
-      await db
-        .insert(tgGroups)
-        .values({ id: groupId, title, memberCount, accessHash, isChannel, syncedAt: new Date() })
-        .onConflictDoUpdate({
-          target: tgGroups.id,
-          set: { title, memberCount, accessHash, isChannel, syncedAt: new Date() },
-        })
+      groupRows.push({
+        id: entity.id.toString(),
+        title: entity.title || "Untitled",
+        isChannel,
+        accessHash: isChannel ? (entity.accessHash?.toString() ?? "0") : "0",
+        memberCount: "participantsCount" in entity ? (entity.participantsCount ?? null) : null,
+      })
     }
+  }
+
+  // Upsert all groups in parallel (10 at a time) — much faster than sequential
+  const CONCURRENCY = 10
+  for (let i = 0; i < groupRows.length; i += CONCURRENCY) {
+    await Promise.all(
+      groupRows.slice(i, i + CONCURRENCY).map((g) =>
+        db
+          .insert(tgGroups)
+          .values({ ...g, syncedAt: new Date() })
+          .onConflictDoUpdate({
+            target: tgGroups.id,
+            set: { title: g.title, memberCount: g.memberCount, accessHash: g.accessHash, isChannel: g.isChannel, syncedAt: new Date() },
+          })
+      )
+    )
   }
 
   revalidatePath("/telegram")
