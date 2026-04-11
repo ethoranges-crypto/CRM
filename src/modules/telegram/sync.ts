@@ -174,6 +174,8 @@ export async function syncAllGroups() {
     if (entity instanceof Api.Chat || entity instanceof Api.Channel) {
       const groupId = entity.id.toString()
       const title = entity.title || "Untitled"
+      const isChannel = entity instanceof Api.Channel
+      const accessHash = isChannel ? (entity.accessHash?.toString() ?? "0") : "0"
       const memberCount =
         "participantsCount" in entity
           ? (entity.participantsCount ?? null)
@@ -181,10 +183,10 @@ export async function syncAllGroups() {
 
       await db
         .insert(tgGroups)
-        .values({ id: groupId, title, memberCount, syncedAt: new Date() })
+        .values({ id: groupId, title, memberCount, accessHash, isChannel, syncedAt: new Date() })
         .onConflictDoUpdate({
           target: tgGroups.id,
-          set: { title, memberCount, syncedAt: new Date() },
+          set: { title, memberCount, accessHash, isChannel, syncedAt: new Date() },
         })
     }
   }

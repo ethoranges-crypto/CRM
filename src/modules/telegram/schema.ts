@@ -20,6 +20,8 @@ export const tgGroups = sqliteTable("tg_groups", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   memberCount: integer("member_count"),
+  accessHash: text("access_hash"),
+  isChannel: integer("is_channel", { mode: "boolean" }).default(false),
   syncedAt: integer("synced_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
