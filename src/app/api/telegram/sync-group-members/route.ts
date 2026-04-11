@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
             channelId: BigInt(groupId) as unknown as Api.long,
             accessHash: BigInt(group.accessHash) as unknown as Api.long,
           }),
-          filter: new Api.ChannelParticipantsRecent({}),
+          filter: new Api.ChannelParticipantsRecent(),
           offset,
           limit,
           hash: BigInt(0) as unknown as Api.long,
