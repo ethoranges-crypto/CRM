@@ -17,6 +17,7 @@ export function SyncMembersButton({ groupId, totalMembers, syncedMembers }: Sync
   const [running, setRunning] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState("")
+  const [adminRequired, setAdminRequired] = useState(false)
   const stopRef = useRef(false)
   const router = useRouter()
 
@@ -37,6 +38,10 @@ export function SyncMembersButton({ groupId, totalMembers, syncedMembers }: Sync
           body: JSON.stringify({ groupId, offset, limit: 200 }),
         })
         const data = await res.json()
+        if (res.status === 403 && data.adminRequired) {
+          setAdminRequired(true)
+          break
+        }
         if (!res.ok) throw new Error(data.error || "Sync failed")
 
         offset = data.nextOffset
@@ -74,7 +79,10 @@ export function SyncMembersButton({ groupId, totalMembers, syncedMembers }: Sync
           </div>
         </>
       )}
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {adminRequired && (
+        <p className="text-xs text-muted-foreground">Members hidden — you need to be an admin of this group to sync its members.</p>
+      )}
+      {!adminRequired && error && <p className="text-xs text-destructive">{error}</p>}
       {done ? (
         <p className="text-xs text-green-600">Members synced ✓</p>
       ) : running ? (
