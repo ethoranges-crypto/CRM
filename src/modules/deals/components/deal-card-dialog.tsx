@@ -20,14 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Trash2, Plus, X, Bell, Flag } from "lucide-react"
-
-// 08:00–19:00 in 30-min increments
-const REMINDER_TIMES = Array.from({ length: 23 }, (_, i) => {
-  const totalMins = 8 * 60 + i * 30
-  const h = Math.floor(totalMins / 60)
-  const m = totalMins % 60
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
-})
 import {
   addNote,
   deleteDeal,
@@ -42,6 +34,14 @@ import {
 import { LabelPicker } from "./label-picker"
 import { ReminderRow } from "./reminder-row"
 import type { DealWithNotes, Label } from "../types"
+
+// 08:00–19:00 in 30-min increments
+const REMINDER_TIMES = Array.from({ length: 23 }, (_, i) => {
+  const totalMins = 8 * 60 + i * 30
+  const h = Math.floor(totalMins / 60)
+  const m = totalMins % 60
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+})
 
 interface DealCardDialogProps {
   deal: DealWithNotes
@@ -64,6 +64,7 @@ export function DealCardDialog({
   const [company, setCompany] = useState(deal.company || "")
   const [tgHandle, setTgHandle] = useState(deal.telegramHandle || "")
   const [actionTakenAt, setActionTakenAt] = useState<Date | null>(deal.actionTakenAt ?? null)
+  const [actionNote, setActionNote] = useState(deal.actionNote ?? "")
   const [noteText, setNoteText] = useState("")
   const [newFieldName, setNewFieldName] = useState("")
   const [newFieldValue, setNewFieldValue] = useState("")
@@ -195,36 +196,79 @@ export function DealCardDialog({
         <Separator />
 
         {/* Action pending */}
-        <div className="flex items-center justify-between">
+        <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Flag className={`h-4 w-4 ${actionTakenAt ? "fill-blue-500 text-blue-500" : "text-muted-foreground"}`} />
-            <div>
-              <p className="text-sm font-medium">Action Pending</p>
-              {actionTakenAt ? (
-                <p className="text-xs text-muted-foreground">
-                  Marked {new Date(actionTakenAt).toLocaleDateString()} — timer shows on card
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">No action pending</p>
+            <p className="text-sm font-medium">Action Pending</p>
+            {actionTakenAt && (
+              <span className="ml-auto text-xs text-muted-foreground">
+                Marked {new Date(actionTakenAt).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+
+          {actionTakenAt ? (
+            /* Active state — show note + clear button */
+            <div className="space-y-2 rounded-md border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
+              {actionNote && (
+                <p className="text-sm">{actionNote}</p>
+              )}
+              {canEdit && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isPending}
+                  className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400"
+                  onClick={() => {
+                    setActionTakenAt(null)
+                    setActionNote("")
+                    startTransition(async () => {
+                      await setActionTaken(deal.id, false)
+                      router.refresh()
+                    })
+                  }}
+                >
+                  Clear action
+                </Button>
               )}
             </div>
-          </div>
-          {canEdit && (
-            <Button
-              variant={actionTakenAt ? "default" : "outline"}
-              size="sm"
-              disabled={isPending}
-              onClick={() => {
-                const newValue = actionTakenAt ? null : new Date()
-                setActionTakenAt(newValue)
-                startTransition(async () => {
-                  await setActionTaken(deal.id, !actionTakenAt)
-                  router.refresh()
-                })
-              }}
-            >
-              {actionTakenAt ? "Clear" : "Mark action taken"}
-            </Button>
+          ) : (
+            /* Inactive state — show text input + mark button */
+            canEdit && (
+              <div className="flex gap-2">
+                <Input
+                  value={actionNote}
+                  onChange={(e) => setActionNote(e.target.value)}
+                  placeholder="What action did you take? (optional)"
+                  className="flex-1 text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      const now = new Date()
+                      setActionTakenAt(now)
+                      startTransition(async () => {
+                        await setActionTaken(deal.id, true, actionNote.trim() || undefined)
+                        router.refresh()
+                      })
+                    }
+                  }}
+                />
+                <Button
+                  size="sm"
+                  disabled={isPending}
+                  onClick={() => {
+                    const now = new Date()
+                    setActionTakenAt(now)
+                    startTransition(async () => {
+                      await setActionTaken(deal.id, true, actionNote.trim() || undefined)
+                      router.refresh()
+                    })
+                  }}
+                >
+                  Mark action taken
+                </Button>
+              </div>
+            )
           )}
         </div>
 

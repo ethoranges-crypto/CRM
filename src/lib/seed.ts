@@ -16,6 +16,9 @@ export async function seed() {
   try {
     await db.run(sql`ALTER TABLE deals ADD COLUMN action_taken_at INTEGER`)
   } catch { /* column already exists */ }
+  try {
+    await db.run(sql`ALTER TABLE deals ADD COLUMN action_note TEXT`)
+  } catch { /* column already exists */ }
 
   const existing = await db.select().from(pipelineColumns)
   if (existing.length === 0) {

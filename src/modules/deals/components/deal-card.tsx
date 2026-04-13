@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
@@ -37,16 +37,16 @@ function businessDaysSince(date: Date): number {
   return count
 }
 
-// Returns inline style colours for the days badge
+// Colour gradient: 0–3 blue, 4–6 red, 7+ deep red
 function actionBadgeColors(days: number): { background: string; color: string } {
-  if (days <= 0) return { background: "#dbeafe", color: "#1d4ed8" } // blue-100 / blue-700
-  if (days === 1) return { background: "#bfdbfe", color: "#1e40af" } // blue-200 / blue-800
-  if (days === 2) return { background: "#93c5fd", color: "#1e3a8a" } // blue-300 / blue-900
-  if (days === 3) return { background: "#60a5fa", color: "#fff" }     // blue-400 / white
-  if (days === 4) return { background: "#fca5a5", color: "#b91c1c" } // red-300 / red-700
-  if (days === 5) return { background: "#f87171", color: "#991b1b" } // red-400 / red-800
-  if (days === 6) return { background: "#ef4444", color: "#fff" }     // red-500 / white
-  return { background: "#b91c1c", color: "#fff" }                      // red-700 / white (7+)
+  if (days <= 0) return { background: "#dbeafe", color: "#1d4ed8" }
+  if (days === 1) return { background: "#bfdbfe", color: "#1e40af" }
+  if (days === 2) return { background: "#93c5fd", color: "#1e3a8a" }
+  if (days === 3) return { background: "#60a5fa", color: "#fff" }
+  if (days === 4) return { background: "#fca5a5", color: "#b91c1c" }
+  if (days === 5) return { background: "#f87171", color: "#991b1b" }
+  if (days === 6) return { background: "#ef4444", color: "#fff" }
+  return { background: "#b91c1c", color: "#fff" }
 }
 
 export function DealCard({
@@ -60,10 +60,14 @@ export function DealCard({
 }: DealCardProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  // Optimistic local state so the badge appears/disappears instantly
+
+  // Sync with prop so that dialog saves are reflected on the card immediately
   const [actionTakenAt, setActionTakenAt] = useState<Date | null>(
     deal.actionTakenAt ?? null
   )
+  useEffect(() => {
+    setActionTakenAt(deal.actionTakenAt ?? null)
+  }, [deal.actionTakenAt])
 
   const {
     attributes,
@@ -87,15 +91,18 @@ export function DealCard({
     e.stopPropagation()
     if (!canEdit || isPending) return
     const newValue = actionTakenAt ? null : new Date()
-    setActionTakenAt(newValue) // optimistic
+    setActionTakenAt(newValue)
     startTransition(async () => {
-      await setActionTaken(deal.id, !actionTakenAt)
+      await setActionTaken(deal.id, !!newValue)
       router.refresh()
     })
   }
 
   const days = actionTakenAt ? businessDaysSince(actionTakenAt) : null
   const badgeColors = days !== null ? actionBadgeColors(days) : null
+  const tooltipText = days !== null
+    ? `${days} business day${days !== 1 ? "s" : ""} since action${deal.actionNote ? `: ${deal.actionNote}` : ""}`
+    : undefined
 
   return (
     <Card
@@ -117,7 +124,7 @@ export function DealCard({
         <span
           className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold leading-none"
           style={badgeColors}
-          title={`Action taken ${days} business day${days !== 1 ? "s" : ""} ago`}
+          title={tooltipText}
         >
           {days}
         </span>
@@ -186,7 +193,7 @@ export function DealCard({
             </span>
           )}
 
-          {/* Action-pending toggle — only in edit mode */}
+          {/* Action-pending flag toggle */}
           {canEdit && (
             <button
               onClick={handleToggleAction}
@@ -195,7 +202,7 @@ export function DealCard({
               className={cn(
                 "ml-auto flex items-center gap-0.5 rounded px-1 py-0.5 transition-colors",
                 actionTakenAt
-                  ? "text-blue-500 hover:text-blue-700"
+                  ? "text-blue-500 hover:text-red-400"
                   : "text-muted-foreground/40 hover:text-muted-foreground"
               )}
             >

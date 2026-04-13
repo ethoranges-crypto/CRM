@@ -132,13 +132,18 @@ export async function updateDeal(
 
 export async function setActionTaken(
   dealId: string,
-  taken: boolean
+  taken: boolean,
+  note?: string
 ): Promise<ActionResult> {
   if (!(await getCanEdit())) return { success: false, error: "Unauthorized" }
   try {
     await db
       .update(deals)
-      .set({ actionTakenAt: taken ? new Date() : null, updatedAt: new Date() })
+      .set({
+        actionTakenAt: taken ? new Date() : null,
+        actionNote: taken ? (note ?? null) : null,
+        updatedAt: new Date(),
+      })
       .where(eq(deals.id, dealId))
     revalidatePath("/deals")
     return { success: true }
