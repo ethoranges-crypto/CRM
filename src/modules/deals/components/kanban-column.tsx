@@ -48,6 +48,8 @@ interface KanbanColumnProps {
   allLabels: Label[]
   canEdit: boolean
   isOverlay?: boolean
+  showLabelText?: boolean
+  onToggleLabelText?: () => void
 }
 
 export function KanbanColumn({
@@ -55,6 +57,8 @@ export function KanbanColumn({
   allLabels,
   canEdit,
   isOverlay,
+  showLabelText = false,
+  onToggleLabelText,
 }: KanbanColumnProps) {
   const columns = useDealsStore((s) => s.columns)
   const dealIds = column.deals.map((d) => d.id)
@@ -108,7 +112,7 @@ export function KanbanColumn({
         ref={setSortableRef}
         style={style}
         className={cn(
-          "flex w-72 shrink-0 flex-col rounded-lg bg-muted/50",
+          "flex w-80 shrink-0 flex-col rounded-lg bg-muted/50",
           isDragging && "opacity-30",
           isOverlay && "shadow-xl ring-2 ring-primary"
         )}
@@ -189,6 +193,8 @@ export function KanbanColumn({
                   deal={deal}
                   columnId={column.id}
                   canEdit={canEdit}
+                  showLabelText={showLabelText}
+                  onToggleLabelText={onToggleLabelText}
                   onClick={() => setSelectedDeal(deal)}
                 />
               ))}

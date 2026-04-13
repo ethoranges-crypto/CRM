@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import {
   DndContext,
   DragOverlay,
@@ -44,6 +44,18 @@ export function KanbanBoard({ initialData, allLabels, canEdit }: KanbanBoardProp
   } = useDealsStore()
 
   const [activeType, setActiveType] = useState<"card" | "column" | null>(null)
+  const [showLabelText, setShowLabelText] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false
+    return localStorage.getItem("kanban-label-text") === "true"
+  })
+
+  const handleToggleLabelText = useCallback(() => {
+    setShowLabelText((prev) => {
+      const next = !prev
+      localStorage.setItem("kanban-label-text", String(next))
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     setColumns(initialData)
@@ -171,6 +183,8 @@ export function KanbanBoard({ initialData, allLabels, canEdit }: KanbanBoardProp
             column={column}
             allLabels={allLabels}
             canEdit={false}
+            showLabelText={showLabelText}
+            onToggleLabelText={handleToggleLabelText}
           />
         ))}
       </div>
@@ -196,6 +210,8 @@ export function KanbanBoard({ initialData, allLabels, canEdit }: KanbanBoardProp
               column={column}
               allLabels={allLabels}
               canEdit={true}
+              showLabelText={showLabelText}
+              onToggleLabelText={handleToggleLabelText}
             />
           ))}
           <AddColumnButton />
@@ -211,7 +227,7 @@ export function KanbanBoard({ initialData, allLabels, canEdit }: KanbanBoardProp
             isOverlay
           />
         ) : activeType === "card" && activeDeal ? (
-          <DealCard deal={activeDeal} isOverlay />
+          <DealCard deal={activeDeal} isOverlay showLabelText={showLabelText} />
         ) : null}
       </DragOverlay>
     </DndContext>

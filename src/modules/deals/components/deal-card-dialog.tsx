@@ -12,7 +12,22 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Trash2, Plus, X, Bell } from "lucide-react"
+
+// 08:00–19:00 in 30-min increments
+const REMINDER_TIMES = Array.from({ length: 23 }, (_, i) => {
+  const totalMins = 8 * 60 + i * 30
+  const h = Math.floor(totalMins / 60)
+  const m = totalMins % 60
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+})
 import {
   addNote,
   deleteDeal,
@@ -130,7 +145,7 @@ export function DealCardDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
+      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{canEdit ? "Edit Deal" : "View Deal"}</DialogTitle>
         </DialogHeader>
@@ -260,12 +275,16 @@ export function DealCardDialog({
                   onChange={(e) => setReminderDate(e.target.value)}
                   className="flex-1"
                 />
-                <Input
-                  type="time"
-                  value={reminderTime}
-                  onChange={(e) => setReminderTime(e.target.value)}
-                  className="w-28"
-                />
+                <Select value={reminderTime} onValueChange={setReminderTime}>
+                  <SelectTrigger className="w-28">
+                    <SelectValue placeholder="Time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REMINDER_TIMES.map((t) => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex items-center gap-2">
                 <Input

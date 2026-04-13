@@ -13,6 +13,8 @@ interface DealCardProps {
   columnId?: string
   canEdit?: boolean
   isOverlay?: boolean
+  showLabelText?: boolean
+  onToggleLabelText?: () => void
   onClick?: () => void
 }
 
@@ -21,6 +23,8 @@ export function DealCard({
   columnId,
   canEdit,
   isOverlay,
+  showLabelText = false,
+  onToggleLabelText,
   onClick,
 }: DealCardProps) {
   const {
@@ -57,15 +61,32 @@ export function DealCard({
     >
       <CardContent className="space-y-1.5 p-3">
         {deal.labels.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {deal.labels.map((label) => (
-              <span
-                key={label.id}
-                className="inline-block h-2 w-8 rounded-full"
-                style={{ backgroundColor: label.color }}
-                title={label.name}
-              />
-            ))}
+          <div
+            className="flex flex-wrap gap-1"
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleLabelText?.()
+            }}
+          >
+            {deal.labels.map((label) =>
+              showLabelText ? (
+                <span
+                  key={label.id}
+                  className="inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium text-white"
+                  style={{ backgroundColor: label.color }}
+                  title={label.name}
+                >
+                  {label.name}
+                </span>
+              ) : (
+                <span
+                  key={label.id}
+                  className="inline-block h-2 w-8 rounded-full"
+                  style={{ backgroundColor: label.color }}
+                  title={label.name}
+                />
+              )
+            )}
           </div>
         )}
 
