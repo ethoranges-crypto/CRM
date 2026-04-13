@@ -319,8 +319,8 @@ export function DealCardDialog({
               key={note.id}
               className="group flex items-start justify-between rounded bg-muted p-2 text-sm"
             >
-              <div>
-                {note.content}
+              <div className="min-w-0 flex-1">
+                <p className="whitespace-pre-wrap break-words">{note.content}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {new Date(note.createdAt).toLocaleDateString()}
                 </p>
