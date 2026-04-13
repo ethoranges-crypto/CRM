@@ -1,5 +1,6 @@
 import { db } from "./db"
 import { pipelineColumns } from "@/modules/deals/schema"
+import { sql } from "drizzle-orm"
 import { nanoid } from "nanoid"
 
 const defaultColumns = [
@@ -11,6 +12,11 @@ const defaultColumns = [
 ]
 
 export async function seed() {
+  // Schema migrations — safe no-ops if column already exists
+  try {
+    await db.run(sql`ALTER TABLE deals ADD COLUMN action_taken_at INTEGER`)
+  } catch { /* column already exists */ }
+
   const existing = await db.select().from(pipelineColumns)
   if (existing.length === 0) {
     for (const col of defaultColumns) {

@@ -18,6 +18,7 @@ export const deals = sqliteTable("deals", {
     .notNull()
     .references(() => pipelineColumns.id),
   order: integer("order").notNull(),
+  actionTakenAt: integer("action_taken_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),

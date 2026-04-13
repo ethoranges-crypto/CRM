@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Trash2, Plus, X, Bell } from "lucide-react"
+import { Trash2, Plus, X, Bell, Flag } from "lucide-react"
 
 // 08:00–19:00 in 30-min increments
 const REMINDER_TIMES = Array.from({ length: 23 }, (_, i) => {
@@ -33,6 +33,7 @@ import {
   deleteDeal,
   deleteNote,
   updateDeal,
+  setActionTaken,
   addCustomField,
   updateCustomField,
   deleteCustomField,
@@ -62,6 +63,7 @@ export function DealCardDialog({
   const [alias, setAlias] = useState(deal.alias)
   const [company, setCompany] = useState(deal.company || "")
   const [tgHandle, setTgHandle] = useState(deal.telegramHandle || "")
+  const [actionTakenAt, setActionTakenAt] = useState<Date | null>(deal.actionTakenAt ?? null)
   const [noteText, setNoteText] = useState("")
   const [newFieldName, setNewFieldName] = useState("")
   const [newFieldValue, setNewFieldValue] = useState("")
@@ -188,6 +190,42 @@ export function DealCardDialog({
               readOnly={!canEdit}
             />
           </div>
+        </div>
+
+        <Separator />
+
+        {/* Action pending */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Flag className={`h-4 w-4 ${actionTakenAt ? "fill-blue-500 text-blue-500" : "text-muted-foreground"}`} />
+            <div>
+              <p className="text-sm font-medium">Action Pending</p>
+              {actionTakenAt ? (
+                <p className="text-xs text-muted-foreground">
+                  Marked {new Date(actionTakenAt).toLocaleDateString()} — timer shows on card
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">No action pending</p>
+              )}
+            </div>
+          </div>
+          {canEdit && (
+            <Button
+              variant={actionTakenAt ? "default" : "outline"}
+              size="sm"
+              disabled={isPending}
+              onClick={() => {
+                const newValue = actionTakenAt ? null : new Date()
+                setActionTakenAt(newValue)
+                startTransition(async () => {
+                  await setActionTaken(deal.id, !actionTakenAt)
+                  router.refresh()
+                })
+              }}
+            >
+              {actionTakenAt ? "Clear" : "Mark action taken"}
+            </Button>
+          )}
         </div>
 
         <Separator />
