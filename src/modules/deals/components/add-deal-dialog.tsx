@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Plus } from "lucide-react"
 import { createDeal } from "../actions"
 
@@ -58,15 +57,15 @@ export function AddDealDialog({ columnId }: { columnId: string }) {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="company">Company Name</Label>
+            <label htmlFor="company" className="text-sm font-medium">Company Name</label>
             <Input id="company" name="company" placeholder="e.g. Aave, Uniswap" required />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="alias">Contact Name / Alias</Label>
+            <label htmlFor="alias" className="text-sm font-medium">Contact Name / Alias</label>
             <Input id="alias" name="alias" placeholder="e.g. Stani K" required />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="telegramHandle">Telegram Handle / Group</Label>
+            <label htmlFor="telegramHandle" className="text-sm font-medium">Telegram Handle / Group</label>
             <Input id="telegramHandle" name="telegramHandle" placeholder="e.g. @StaniKulechov" required />
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
