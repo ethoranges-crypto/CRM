@@ -80,8 +80,8 @@ export async function getColumnsWithDeals(): Promise<ColumnWithDeals[]> {
 
 export async function createDeal(data: {
   alias: string
-  company?: string
-  telegramHandle?: string
+  company: string
+  telegramHandle: string
   columnId: string
 }): Promise<ActionResult> {
   if (!(await getCanEdit())) return { success: false, error: "Unauthorized" }
@@ -97,8 +97,8 @@ export async function createDeal(data: {
     await db.insert(deals).values({
       id: nanoid(),
       alias: data.alias,
-      company: data.company || null,
-      telegramHandle: data.telegramHandle || null,
+      company: data.company,
+      telegramHandle: data.telegramHandle,
       columnId: data.columnId,
       order: nextOrder,
     })
