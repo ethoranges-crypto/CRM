@@ -86,10 +86,10 @@ export function ReminderPageRow({ data, canEdit }: ReminderPageRowProps) {
       <CardContent className="flex items-center gap-3 p-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-medium">{dealAlias}</p>
+            <p className="text-sm font-medium">{dealCompany ?? dealAlias}</p>
             {dealCompany && (
               <span className="text-xs text-muted-foreground">
-                {dealCompany}
+                {dealAlias}
               </span>
             )}
           </div>
