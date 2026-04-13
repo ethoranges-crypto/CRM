@@ -112,7 +112,7 @@ export function KanbanColumn({
         ref={setSortableRef}
         style={style}
         className={cn(
-          "flex w-80 shrink-0 flex-col rounded-lg bg-muted/50",
+          "flex w-80 shrink-0 flex-col rounded-lg bg-muted/50 max-h-[calc(100vh-8rem)]",
           isDragging && "opacity-30",
           isOverlay && "shadow-xl ring-2 ring-primary"
         )}

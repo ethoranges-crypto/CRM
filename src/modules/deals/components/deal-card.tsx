@@ -90,9 +90,12 @@ export function DealCard({
           </div>
         )}
 
-        <p className="text-sm font-medium">{deal.alias}</p>
+        {deal.company
+          ? <p className="text-sm font-medium">{deal.company}</p>
+          : <p className="text-sm font-medium">{deal.alias}</p>
+        }
         {deal.company && (
-          <p className="text-xs text-muted-foreground">{deal.company}</p>
+          <p className="text-xs text-muted-foreground">{deal.alias}</p>
         )}
         {deal.telegramHandle && (
           <Badge variant="secondary" className="text-xs">
