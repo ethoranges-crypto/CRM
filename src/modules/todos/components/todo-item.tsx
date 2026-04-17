@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
@@ -18,7 +18,13 @@ interface TodoItemProps {
 export function TodoItem({ todo }: TodoItemProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [isCompleted, setIsCompleted] = useState(todo.isCompleted)
   const [editing, setEditing] = useState(false)
+
+  // Keep in sync when parent list refreshes
+  useEffect(() => {
+    setIsCompleted(todo.isCompleted)
+  }, [todo.isCompleted])
   const [editText, setEditText] = useState(todo.text)
   const [editUrgent, setEditUrgent] = useState(todo.isUrgent)
   const [editDate, setEditDate] = useState(
@@ -40,8 +46,10 @@ export function TodoItem({ todo }: TodoItemProps) {
   }
 
   function handleComplete() {
+    const next = !isCompleted
+    setIsCompleted(next) // optimistic — instant visual feedback
     startTransition(async () => {
-      await completeTodo(todo.id, !todo.isCompleted)
+      await completeTodo(todo.id, next)
       router.refresh()
     })
   }
@@ -83,7 +91,7 @@ export function TodoItem({ todo }: TodoItemProps) {
       className={cn(
         "group flex items-start gap-2 rounded-lg border bg-card p-3 transition-opacity",
         isDragging && "opacity-30",
-        todo.isCompleted && "opacity-60"
+        isCompleted && "opacity-60"
       )}
     >
       {/* Drag handle */}
@@ -102,12 +110,12 @@ export function TodoItem({ todo }: TodoItemProps) {
         disabled={isPending}
         className={cn(
           "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-colors",
-          todo.isCompleted
+          isCompleted
             ? "border-green-500 bg-green-500 text-white"
             : "border-muted-foreground/40 hover:border-green-400"
         )}
       >
-        {todo.isCompleted && <Check className="h-2.5 w-2.5" />}
+        {isCompleted && <Check className="h-2.5 w-2.5" />}
       </button>
 
       {/* Content */}
@@ -169,19 +177,19 @@ export function TodoItem({ todo }: TodoItemProps) {
               <span
                 className={cn(
                   "text-sm",
-                  todo.isCompleted && "line-through text-muted-foreground"
+                  isCompleted && "line-through text-muted-foreground"
                 )}
               >
                 {todo.text}
               </span>
             </div>
-            {todo.scheduledFor && !todo.isCompleted && (
+            {todo.scheduledFor && !isCompleted && (
               <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                 <Calendar className="h-3 w-3" />
                 From {new Date(todo.scheduledFor).toLocaleDateString()}
               </p>
             )}
-            {todo.isCompleted && todo.completedAt && (
+            {isCompleted && todo.completedAt && (
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Done {new Date(todo.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </p>

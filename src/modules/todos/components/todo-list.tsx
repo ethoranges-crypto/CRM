@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import {
   DndContext,
@@ -29,6 +29,11 @@ export function TodoList({ initialTodos }: TodoListProps) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [items, setItems] = useState<Todo[]>(initialTodos)
+
+  // Sync when server re-renders with fresh data (after create/complete/delete)
+  useEffect(() => {
+    setItems(initialTodos)
+  }, [initialTodos])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
