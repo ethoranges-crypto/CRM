@@ -20,6 +20,21 @@ export async function seed() {
     await db.run(sql`ALTER TABLE deals ADD COLUMN action_note TEXT`)
   } catch { /* column already exists */ }
 
+  // Todos table
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS todos (
+      id TEXT PRIMARY KEY,
+      text TEXT NOT NULL,
+      is_urgent INTEGER NOT NULL DEFAULT 0,
+      is_completed INTEGER NOT NULL DEFAULT 0,
+      completed_at INTEGER,
+      scheduled_for INTEGER,
+      "order" INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `)
+
   const existing = await db.select().from(pipelineColumns)
   if (existing.length === 0) {
     for (const col of defaultColumns) {
