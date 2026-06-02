@@ -1,6 +1,7 @@
 "use client"
 
 import { type ColumnDef } from "@tanstack/react-table"
+import { formatDate } from "@/lib/format-date"
 import type { TgContact } from "../types"
 
 export const columns: ColumnDef<TgContact>[] = [
@@ -44,7 +45,7 @@ export const columns: ColumnDef<TgContact>[] = [
     header: "Last Online",
     cell: ({ row }) => {
       const date = row.getValue<Date | null>("lastOnline")
-      return date ? new Date(date).toLocaleDateString() : "Unknown"
+      return date ? formatDate(date) : "Unknown"
     },
   },
   {

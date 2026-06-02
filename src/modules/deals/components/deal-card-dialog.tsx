@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import { formatDate } from "@/lib/format-date"
 import {
   Dialog,
   DialogContent,
@@ -202,7 +203,7 @@ export function DealCardDialog({
             <p className="text-sm font-medium">Action Pending</p>
             {actionTakenAt && (
               <span className="ml-auto text-xs text-muted-foreground">
-                Marked {new Date(actionTakenAt).toLocaleDateString()}
+                Marked {formatDate(actionTakenAt)}
               </span>
             )}
           </div>
@@ -404,7 +405,7 @@ export function DealCardDialog({
               <div className="min-w-0 flex-1">
                 <p className="whitespace-pre-wrap break-words">{note.content}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {new Date(note.createdAt).toLocaleDateString()}
+                  {formatDate(note.createdAt)}
                 </p>
               </div>
               {canEdit && (

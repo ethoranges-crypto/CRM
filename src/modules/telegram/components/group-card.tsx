@@ -2,6 +2,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Users } from "lucide-react"
+import { formatDate } from "@/lib/format-date"
 import type { TgGroup } from "../types"
 
 interface GroupCardProps {
@@ -24,7 +25,7 @@ export function GroupCard({ group }: GroupCardProps) {
               {group.memberCount ?? 0} members
             </Badge>
             <span className="text-xs text-muted-foreground">
-              Synced {new Date(group.syncedAt).toLocaleDateString()}
+              Synced {formatDate(group.syncedAt)}
             </span>
           </div>
         </CardContent>

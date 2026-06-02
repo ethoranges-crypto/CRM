@@ -1,4 +1,5 @@
 import { getContacts, getGroupById, getGroupIndexStats } from "@/modules/telegram/actions"
+import { formatDate } from "@/lib/format-date"
 import { ContactsTable } from "@/modules/telegram/components/contacts-table"
 import { BioIndexButton } from "@/modules/telegram/components/bio-index-button"
 import { SyncMembersButton } from "@/modules/telegram/components/sync-members-button"
@@ -37,7 +38,7 @@ export default async function GroupMembersPage({ params }: GroupMembersPageProps
           <p className="text-xs text-muted-foreground">
             {stats.total.toLocaleString()} of {(group.memberCount ?? 0).toLocaleString()} members synced
             &nbsp;&middot;&nbsp;
-            Last synced {new Date(group.syncedAt).toLocaleDateString()}
+            Last synced {formatDate(group.syncedAt)}
           </p>
         </div>
         <div className="flex items-center gap-3">

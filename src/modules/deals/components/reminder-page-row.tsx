@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Check, Pause, Play, Clock, Pencil, Trash2 } from "lucide-react"
 import { updateReminder, markReminderDone, deleteReminder } from "../actions"
+import { formatDateTime } from "@/lib/format-date"
 import type { DealReminder } from "../types"
 
 interface ReminderPageRowProps {
@@ -129,7 +130,7 @@ export function ReminderPageRow({ data, canEdit }: ReminderPageRowProps) {
           ) : (
             <p className="mt-0.5 text-xs text-muted-foreground">
               <Clock className="mr-1 inline h-3 w-3" />
-              {new Date(reminder.dueAt).toLocaleString()}
+              {formatDateTime(reminder.dueAt)}
             </p>
           )}
         </div>

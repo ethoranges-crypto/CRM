@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import { formatDate, formatTime } from "@/lib/format-date"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { Button } from "@/components/ui/button"
@@ -186,12 +187,12 @@ export function TodoItem({ todo }: TodoItemProps) {
             {todo.scheduledFor && !isCompleted && (
               <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                 <Calendar className="h-3 w-3" />
-                From {new Date(todo.scheduledFor).toLocaleDateString()}
+                From {formatDate(todo.scheduledFor)}
               </p>
             )}
             {isCompleted && todo.completedAt && (
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Done {new Date(todo.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                Done {formatTime(todo.completedAt)}
               </p>
             )}
           </>

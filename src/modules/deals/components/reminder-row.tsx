@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Pause, Play, Check, Trash2, Clock } from "lucide-react"
 import { updateReminder, deleteReminder, markReminderDone } from "../actions"
+import { formatDateTime } from "@/lib/format-date"
 import type { DealReminder } from "../types"
 
 interface ReminderRowProps {
@@ -121,7 +122,7 @@ export function ReminderRow({ reminder, canEdit }: ReminderRowProps) {
             className={canEdit ? "cursor-pointer text-xs text-muted-foreground hover:underline" : "text-xs text-muted-foreground"}
             onClick={canEdit ? startEditing : undefined}
           >
-            {new Date(reminder.dueAt).toLocaleString()}
+            {formatDateTime(reminder.dueAt)}
           </p>
         )}
       </div>
