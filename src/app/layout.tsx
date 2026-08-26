@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { AppShell } from "@/components/layout/app-shell"
@@ -17,6 +17,15 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "CRM",
   description: "Personal deal pipeline and contact manager",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: "#0f172a",
 }
 
 export default function RootLayout({

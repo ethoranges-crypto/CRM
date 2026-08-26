@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Bell, Flag } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { setActionTaken } from "../actions"
+import { businessDaysSince } from "@/lib/business-days"
 import type { DealWithNotes } from "../types"
 
 interface DealCardProps {
@@ -19,22 +20,6 @@ interface DealCardProps {
   showLabelText?: boolean
   onToggleLabelText?: () => void
   onClick?: () => void
-}
-
-// Returns number of business days (Mon–Fri) since a given date
-function businessDaysSince(date: Date): number {
-  const start = new Date(date)
-  start.setHours(0, 0, 0, 0)
-  const now = new Date()
-  now.setHours(0, 0, 0, 0)
-  let count = 0
-  const d = new Date(start)
-  while (d < now) {
-    d.setDate(d.getDate() + 1)
-    const day = d.getDay()
-    if (day !== 0 && day !== 6) count++
-  }
-  return count
 }
 
 // Colour gradient: 0–3 blue, 4–6 red, 7+ deep red

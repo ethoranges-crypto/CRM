@@ -1,0 +1,17 @@
+{
+  "name": "CRM",
+  "short_name": "CRM",
+  "description": "Personal deal pipeline and contact manager",
+  "start_url": "/deals",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
