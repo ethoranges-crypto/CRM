@@ -188,3 +188,39 @@ export function formatDigestMessage(data: DigestData): string {
 
   return lines.join("\n")
 }
+
+// Telegram's hard limit is 4096 UTF-16 code units per message; a busy day
+// across 7 possible sections can plausibly exceed that, and an oversized
+// send fails outright with nothing delivered — exactly when the digest
+// matters most. Split on section boundaries (blank lines) so a section's
+// bullet list never gets cut mid-way if avoidable.
+const TELEGRAM_MAX_MESSAGE_LENGTH = 3500
+
+export function chunkDigestMessage(message: string): string[] {
+  if (message.length <= TELEGRAM_MAX_MESSAGE_LENGTH) return [message]
+
+  const sections = message.split("\n\n")
+  const chunks: string[] = []
+  let current = ""
+
+  for (const section of sections) {
+    const candidate = current ? `${current}\n\n${section}` : section
+    if (candidate.length > TELEGRAM_MAX_MESSAGE_LENGTH && current) {
+      chunks.push(current)
+      current = section
+    } else {
+      current = candidate
+    }
+    // A single section longer than the limit on its own (many dozens of
+    // items): hard-split by character count as a last resort.
+    while (current.length > TELEGRAM_MAX_MESSAGE_LENGTH) {
+      chunks.push(current.slice(0, TELEGRAM_MAX_MESSAGE_LENGTH))
+      current = current.slice(TELEGRAM_MAX_MESSAGE_LENGTH)
+    }
+  }
+  if (current) chunks.push(current)
+
+  return chunks.length > 1
+    ? chunks.map((c, i) => `(${i + 1}/${chunks.length})\n${c}`)
+    : chunks
+}

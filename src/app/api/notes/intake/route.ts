@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { deals, dealNotes, dealReminders } from "@/modules/deals/schema"
 import { isNoteType } from "@/modules/deals/note-types"
-import { or, like, eq } from "drizzle-orm"
+import { or, eq, sql } from "drizzle-orm"
 import { nanoid } from "nanoid"
 import { revalidatePath } from "next/cache"
 
@@ -64,15 +64,18 @@ export async function POST(request: NextRequest) {
       if (!dealMatch) {
         return NextResponse.json({ error: "dealMatch or dealId is required" }, { status: 400 })
       }
-      const term = `%${dealMatch}%`
+      // Escape LIKE wildcards in user-supplied text so a company name
+      // containing a literal "%" or "_" doesn't match unrelated deals.
+      const escaped = dealMatch.replace(/[\\%_]/g, (ch) => `\\${ch}`)
+      const term = `%${escaped}%`
       const matches = await db
         .select({ id: deals.id, alias: deals.alias, company: deals.company })
         .from(deals)
         .where(
           or(
-            like(deals.company, term),
-            like(deals.alias, term),
-            like(deals.telegramHandle, term)
+            sql`${deals.company} LIKE ${term} ESCAPE '\\'`,
+            sql`${deals.alias} LIKE ${term} ESCAPE '\\'`,
+            sql`${deals.telegramHandle} LIKE ${term} ESCAPE '\\'`
           )
         )
 

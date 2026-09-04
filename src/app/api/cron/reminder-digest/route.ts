@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getTelegramClient } from "@/modules/telegram/client"
-import { getDigestData, formatDigestMessage } from "@/lib/digest"
+import { getDigestData, formatDigestMessage, chunkDigestMessage } from "@/lib/digest"
 
 // Extend Vercel function timeout (Telegram connect + send can be slow)
 export const maxDuration = 30
@@ -21,20 +21,26 @@ export async function GET(request: NextRequest) {
 
   try {
     const data = await getDigestData()
-    const message = formatDigestMessage(data)
+    const chunks = chunkDigestMessage(formatDigestMessage(data))
 
     const client = getTelegramClient()
     await client.connect()
     try {
-      await client.sendMessage("me", { message })
+      for (const chunk of chunks) {
+        await client.sendMessage("me", { message: chunk })
+      }
     } finally {
       await client.disconnect()
     }
 
     return NextResponse.json({
       success: true,
+      messagesSent: chunks.length,
       overdue: data.overdue.length,
       dueToday: data.dueToday.length,
+      dueSoonDeals: data.dueSoonDeals.length,
+      resurfacedDeals: data.resurfacedDeals.length,
+      coldDeals: data.coldDeals.length,
       staleActionDeals: data.staleActionDeals.length,
       urgentTodos: data.urgentTodos.length,
     })

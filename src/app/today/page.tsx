@@ -15,10 +15,10 @@ import {
   getResurfacedDeals,
 } from "@/modules/deals/follow-up-rules"
 import { ReminderPageRow } from "@/modules/deals/components/reminder-page-row"
-import { TodayStaleDealCard } from "@/modules/deals/components/today-stale-deal-card"
 import { TodayDealSpotlightCard } from "@/modules/deals/components/today-deal-spotlight-card"
 import { TodayTodoRow } from "@/modules/todos/components/today-todo-row"
 import { NotificationBanner } from "@/modules/deals/components/notification-banner"
+import { TodaySection } from "@/components/ui/today-section"
 
 export const dynamic = "force-dynamic"
 
@@ -96,135 +96,122 @@ export default async function TodayPage() {
         )}
 
         {overdue.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-semibold text-destructive">
-              Overdue ({overdue.length})
-            </h2>
-            <div className="space-y-2">
-              {overdue.map((r) => (
-                <ReminderPageRow key={r.reminder.id} data={r} canEdit={canEdit} />
-              ))}
-            </div>
-          </section>
+          <TodaySection title="Overdue" count={overdue.length} className="text-destructive">
+            {overdue.map((r) => (
+              <ReminderPageRow key={r.reminder.id} data={r} canEdit={canEdit} />
+            ))}
+          </TodaySection>
         )}
 
         {dueToday.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-semibold">
-              Due Today ({dueToday.length})
-            </h2>
-            <div className="space-y-2">
-              {dueToday.map((r) => (
-                <ReminderPageRow key={r.reminder.id} data={r} canEdit={canEdit} />
-              ))}
-            </div>
-          </section>
+          <TodaySection title="Due Today" count={dueToday.length}>
+            {dueToday.map((r) => (
+              <ReminderPageRow key={r.reminder.id} data={r} canEdit={canEdit} />
+            ))}
+          </TodaySection>
         )}
 
         {dueSoonDeals.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-semibold">
-              Due in 7 days or less ({dueSoonDeals.length})
-            </h2>
-            <div className="space-y-2">
-              {dueSoonDeals.map((deal) => (
-                <TodayDealSpotlightCard
-                  key={deal.id}
-                  deal={deal}
-                  allLabels={allLabels}
-                  canEdit={canEdit}
-                  subtitle={deal.nextAction ?? undefined}
-                  badgeText={
-                    deal.overdue
-                      ? `Overdue — ${formatDate(deal.nextActionDate as Date)}`
-                      : formatDate(deal.nextActionDate as Date)
-                  }
-                  badgeVariant={deal.overdue ? "destructive" : "outline"}
-                />
-              ))}
-            </div>
-          </section>
+          <TodaySection title="Due in 7 days or less" count={dueSoonDeals.length}>
+            {dueSoonDeals.map((deal) => (
+              <TodayDealSpotlightCard
+                key={deal.id}
+                deal={deal}
+                allLabels={allLabels}
+                canEdit={canEdit}
+                subtitle={deal.nextAction ?? undefined}
+                badgeText={
+                  deal.overdue
+                    ? `Overdue — ${formatDate(deal.nextActionDate as Date)}`
+                    : formatDate(deal.nextActionDate as Date)
+                }
+                badgeVariant={deal.overdue ? "destructive" : "outline"}
+              />
+            ))}
+          </TodaySection>
         )}
 
         {resurfacedDeals.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-semibold text-blue-600 dark:text-blue-400">
-              Resurfaced ({resurfacedDeals.length})
-            </h2>
-            <div className="space-y-2">
-              {resurfacedDeals.map((deal) => (
+          <TodaySection
+            title="Resurfaced"
+            count={resurfacedDeals.length}
+            className="text-blue-600 dark:text-blue-400"
+          >
+            {resurfacedDeals.map((deal) => (
+              <TodayDealSpotlightCard
+                key={deal.id}
+                deal={deal}
+                allLabels={allLabels}
+                canEdit={canEdit}
+                subtitle={`Snoozed until ${formatDate(deal.snoozeUntil as Date)}`}
+                badgeText="Resurfaced"
+                badgeClassName="border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-400"
+              />
+            ))}
+          </TodaySection>
+        )}
+
+        {coldDeals.length > 0 && (
+          <TodaySection
+            title="Going Cold — not contacted in 14+ days"
+            count={coldDeals.length}
+            className="text-amber-600 dark:text-amber-500"
+          >
+            {coldDeals.map((deal) => {
+              const effective = deal.lastContactedAt ?? deal.createdAt
+              const days = daysSince(effective)
+              return (
                 <TodayDealSpotlightCard
                   key={deal.id}
                   deal={deal}
                   allLabels={allLabels}
                   canEdit={canEdit}
-                  subtitle={`Snoozed until ${formatDate(deal.snoozeUntil as Date)}`}
-                  badgeText="Resurfaced"
-                  badgeClassName="border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-400"
+                  subtitle={
+                    deal.lastContactedAt
+                      ? `Last contacted ${formatDate(deal.lastContactedAt)}`
+                      : "Never logged a contact"
+                  }
+                  badgeText={`${days}d`}
+                  badgeClassName="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
                 />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {coldDeals.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-semibold text-amber-600 dark:text-amber-500">
-              Going Cold — not contacted in 14+ days ({coldDeals.length})
-            </h2>
-            <div className="space-y-2">
-              {coldDeals.map((deal) => {
-                const effective = deal.lastContactedAt ?? deal.createdAt
-                const days = daysSince(effective)
-                return (
-                  <TodayDealSpotlightCard
-                    key={deal.id}
-                    deal={deal}
-                    allLabels={allLabels}
-                    canEdit={canEdit}
-                    subtitle={
-                      deal.lastContactedAt
-                        ? `Last contacted ${formatDate(deal.lastContactedAt)}`
-                        : "Never logged a contact"
-                    }
-                    badgeText={`${days}d`}
-                    badgeClassName="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
-                  />
-                )
-              })}
-            </div>
-          </section>
+              )
+            })}
+          </TodaySection>
         )}
 
         {staleDeals.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-semibold text-amber-600 dark:text-amber-500">
-              Stale Action Items ({staleDeals.length})
-            </h2>
-            <div className="space-y-2">
-              {staleDeals.map((deal) => (
-                <TodayStaleDealCard
+          <TodaySection
+            title="Stale Action Items"
+            count={staleDeals.length}
+            className="text-amber-600 dark:text-amber-500"
+          >
+            {staleDeals.map((deal) => {
+              const days = businessDaysSince(deal.actionTakenAt as Date)
+              return (
+                <TodayDealSpotlightCard
                   key={deal.id}
                   deal={deal}
                   allLabels={allLabels}
                   canEdit={canEdit}
+                  subtitle={deal.actionNote ?? undefined}
+                  badgeText={`${days} business day${days !== 1 ? "s" : ""}`}
+                  badgeClassName="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
                 />
-              ))}
-            </div>
-          </section>
+              )
+            })}
+          </TodaySection>
         )}
 
         {urgentTodos.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-semibold text-red-600 dark:text-red-500">
-              Urgent To-Dos ({urgentTodos.length})
-            </h2>
-            <div className="space-y-2">
-              {urgentTodos.map((todo) => (
-                <TodayTodoRow key={todo.id} todo={todo} />
-              ))}
-            </div>
-          </section>
+          <TodaySection
+            title="Urgent To-Dos"
+            count={urgentTodos.length}
+            className="text-red-600 dark:text-red-500"
+          >
+            {urgentTodos.map((todo) => (
+              <TodayTodoRow key={todo.id} todo={todo} />
+            ))}
+          </TodaySection>
         )}
       </div>
     </div>
