@@ -5,9 +5,18 @@ import {
 } from "@/modules/deals/actions"
 import { getTodos } from "@/modules/todos/actions"
 import { getCanEdit } from "@/lib/auth"
-import { businessDaysSince } from "@/lib/business-days"
+import { seed } from "@/lib/seed"
+import { businessDaysSince, daysSince } from "@/lib/business-days"
+import { formatDate } from "@/lib/format-date"
+import {
+  getActiveDeals,
+  getDueSoonDeals,
+  getColdDeals,
+  getResurfacedDeals,
+} from "@/modules/deals/follow-up-rules"
 import { ReminderPageRow } from "@/modules/deals/components/reminder-page-row"
 import { TodayStaleDealCard } from "@/modules/deals/components/today-stale-deal-card"
+import { TodayDealSpotlightCard } from "@/modules/deals/components/today-deal-spotlight-card"
 import { TodayTodoRow } from "@/modules/todos/components/today-todo-row"
 import { NotificationBanner } from "@/modules/deals/components/notification-banner"
 
@@ -16,6 +25,8 @@ export const dynamic = "force-dynamic"
 const STALE_ACTION_BUSINESS_DAYS = 3
 
 export default async function TodayPage() {
+  await seed()
+
   const [columns, reminders, todos, allLabels, canEdit] = await Promise.all([
     getColumnsWithDeals(),
     getAllActiveReminders(),
@@ -49,10 +60,21 @@ export default async function TodayPage() {
         businessDaysSince(a.actionTakenAt as Date)
     )
 
+  const activeDeals = getActiveDeals(columns)
+  const dueSoonDeals = getDueSoonDeals(activeDeals)
+  const coldDeals = getColdDeals(activeDeals)
+  const resurfacedDeals = getResurfacedDeals(activeDeals)
+
   const urgentTodos = todos.filter((t) => t.isUrgent && !t.isCompleted)
 
   const totalCount =
-    overdue.length + dueToday.length + staleDeals.length + urgentTodos.length
+    overdue.length +
+    dueToday.length +
+    dueSoonDeals.length +
+    resurfacedDeals.length +
+    coldDeals.length +
+    staleDeals.length +
+    urgentTodos.length
 
   return (
     <div className="flex h-full flex-col">
@@ -95,6 +117,81 @@ export default async function TodayPage() {
               {dueToday.map((r) => (
                 <ReminderPageRow key={r.reminder.id} data={r} canEdit={canEdit} />
               ))}
+            </div>
+          </section>
+        )}
+
+        {dueSoonDeals.length > 0 && (
+          <section>
+            <h2 className="mb-3 text-sm font-semibold">
+              Due in 7 days or less ({dueSoonDeals.length})
+            </h2>
+            <div className="space-y-2">
+              {dueSoonDeals.map((deal) => (
+                <TodayDealSpotlightCard
+                  key={deal.id}
+                  deal={deal}
+                  allLabels={allLabels}
+                  canEdit={canEdit}
+                  subtitle={deal.nextAction ?? undefined}
+                  badgeText={
+                    deal.overdue
+                      ? `Overdue — ${formatDate(deal.nextActionDate as Date)}`
+                      : formatDate(deal.nextActionDate as Date)
+                  }
+                  badgeVariant={deal.overdue ? "destructive" : "outline"}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {resurfacedDeals.length > 0 && (
+          <section>
+            <h2 className="mb-3 text-sm font-semibold text-blue-600 dark:text-blue-400">
+              Resurfaced ({resurfacedDeals.length})
+            </h2>
+            <div className="space-y-2">
+              {resurfacedDeals.map((deal) => (
+                <TodayDealSpotlightCard
+                  key={deal.id}
+                  deal={deal}
+                  allLabels={allLabels}
+                  canEdit={canEdit}
+                  subtitle={`Snoozed until ${formatDate(deal.snoozeUntil as Date)}`}
+                  badgeText="Resurfaced"
+                  badgeClassName="border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-400"
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {coldDeals.length > 0 && (
+          <section>
+            <h2 className="mb-3 text-sm font-semibold text-amber-600 dark:text-amber-500">
+              Going Cold — not contacted in 14+ days ({coldDeals.length})
+            </h2>
+            <div className="space-y-2">
+              {coldDeals.map((deal) => {
+                const effective = deal.lastContactedAt ?? deal.createdAt
+                const days = daysSince(effective)
+                return (
+                  <TodayDealSpotlightCard
+                    key={deal.id}
+                    deal={deal}
+                    allLabels={allLabels}
+                    canEdit={canEdit}
+                    subtitle={
+                      deal.lastContactedAt
+                        ? `Last contacted ${formatDate(deal.lastContactedAt)}`
+                        : "Never logged a contact"
+                    }
+                    badgeText={`${days}d`}
+                    badgeClassName="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
+                  />
+                )
+              })}
             </div>
           </section>
         )}

@@ -104,6 +104,7 @@ export async function createDeal(data: {
     })
 
     revalidatePath("/deals")
+    revalidatePath("/today")
     return { success: true }
   } catch (err) {
     console.error("createDeal error:", err)
@@ -113,7 +114,15 @@ export async function createDeal(data: {
 
 export async function updateDeal(
   dealId: string,
-  data: { alias?: string; company?: string; telegramHandle?: string }
+  data: {
+    alias?: string
+    company?: string
+    telegramHandle?: string
+    nextAction?: string | null
+    nextActionDate?: Date | null
+    lastContactedAt?: Date | null
+    snoozeUntil?: Date | null
+  }
 ): Promise<ActionResult> {
   if (!(await getCanEdit())) return { success: false, error: "Unauthorized" }
   try {
@@ -123,6 +132,7 @@ export async function updateDeal(
       .where(eq(deals.id, dealId))
 
     revalidatePath("/deals")
+    revalidatePath("/today")
     return { success: true }
   } catch (err) {
     console.error("updateDeal error:", err)
@@ -146,6 +156,7 @@ export async function setActionTaken(
       })
       .where(eq(deals.id, dealId))
     revalidatePath("/deals")
+    revalidatePath("/today")
     return { success: true }
   } catch (err) {
     console.error("setActionTaken error:", err)
@@ -158,6 +169,7 @@ export async function deleteDeal(dealId: string): Promise<ActionResult> {
   try {
     await db.delete(deals).where(eq(deals.id, dealId))
     revalidatePath("/deals")
+    revalidatePath("/today")
     return { success: true }
   } catch (err) {
     console.error("deleteDeal error:", err)
@@ -385,7 +397,7 @@ export async function createColumn(
 
 export async function updateColumn(
   columnId: string,
-  data: { title?: string }
+  data: { title?: string; outcome?: "open" | "won" | "lost" }
 ): Promise<ActionResult> {
   if (!(await getCanEdit())) return { success: false, error: "Unauthorized" }
   try {
@@ -394,6 +406,7 @@ export async function updateColumn(
       .set(data)
       .where(eq(pipelineColumns.id, columnId))
     revalidatePath("/deals")
+    revalidatePath("/today")
     return { success: true }
   } catch (err) {
     console.error("updateColumn error:", err)
@@ -483,6 +496,7 @@ export async function addReminder(
       .values({ id: nanoid(), dealId, note, dueAt: dueDate, status: "active" })
     revalidatePath("/deals")
     revalidatePath("/reminders")
+    revalidatePath("/today")
     return { success: true }
   } catch (err) {
     console.error("addReminder error:", err)
@@ -509,6 +523,7 @@ export async function updateReminder(
       .where(eq(dealReminders.id, reminderId))
     revalidatePath("/deals")
     revalidatePath("/reminders")
+    revalidatePath("/today")
     return { success: true }
   } catch (err) {
     console.error("updateReminder error:", err)
@@ -524,6 +539,7 @@ export async function deleteReminder(
     await db.delete(dealReminders).where(eq(dealReminders.id, reminderId))
     revalidatePath("/deals")
     revalidatePath("/reminders")
+    revalidatePath("/today")
     return { success: true }
   } catch (err) {
     console.error("deleteReminder error:", err)
@@ -542,6 +558,7 @@ export async function markReminderDone(
       .where(eq(dealReminders.id, reminderId))
     revalidatePath("/deals")
     revalidatePath("/reminders")
+    revalidatePath("/today")
     return { success: true }
   } catch (err) {
     console.error("markReminderDone error:", err)

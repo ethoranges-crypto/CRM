@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { Bell, Flag } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { setActionTaken } from "../actions"
-import { businessDaysSince } from "@/lib/business-days"
+import { businessDaysSince, isOverdue } from "@/lib/business-days"
+import { formatDate } from "@/lib/format-date"
 import type { DealWithNotes } from "../types"
 
 interface DealCardProps {
@@ -157,6 +158,32 @@ export function DealCard({
           <Badge variant="secondary" className="text-xs">
             @{deal.telegramHandle}
           </Badge>
+        )}
+
+        {deal.nextAction && (
+          <div
+            className={cn(
+              "rounded border-l-2 px-2 py-1",
+              deal.nextActionDate && isOverdue(deal.nextActionDate)
+                ? "border-red-500 bg-red-50 dark:bg-red-950/30"
+                : "border-blue-400 bg-blue-50 dark:bg-blue-950/30"
+            )}
+          >
+            <p className="truncate text-xs font-medium">{deal.nextAction}</p>
+            {deal.nextActionDate && (
+              <p
+                className={cn(
+                  "text-[11px]",
+                  isOverdue(deal.nextActionDate)
+                    ? "font-medium text-red-600 dark:text-red-400"
+                    : "text-muted-foreground"
+                )}
+              >
+                {isOverdue(deal.nextActionDate) ? "Overdue — " : ""}
+                {formatDate(deal.nextActionDate)}
+              </p>
+            )}
+          </div>
         )}
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
