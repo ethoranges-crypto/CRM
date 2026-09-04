@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   SortableContext,
   verticalListSortingStrategy,
@@ -63,6 +63,17 @@ export function KanbanColumn({
   const columns = useDealsStore((s) => s.columns)
   const dealIds = column.deals.map((d) => d.id)
   const [selectedDeal, setSelectedDeal] = useState<DealWithNotes | null>(null)
+
+  // Keep the open dialog's deal in sync with fresh server data (e.g. after
+  // adding a note or reminder triggers router.refresh()) — otherwise the
+  // dialog keeps showing the stale snapshot captured at click time.
+  useEffect(() => {
+    if (!selectedDeal) return
+    const fresh = column.deals.find((d) => d.id === selectedDeal.id)
+    setSelectedDeal(fresh ?? null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [column.deals])
+
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(column.title)
   const [showDelete, setShowDelete] = useState(false)

@@ -67,6 +67,8 @@ export function DealCardDialog({
   const [actionTakenAt, setActionTakenAt] = useState<Date | null>(deal.actionTakenAt ?? null)
   const [actionNote, setActionNote] = useState(deal.actionNote ?? "")
   const [noteText, setNoteText] = useState("")
+  const [followUpDate, setFollowUpDate] = useState("")
+  const [followUpTime, setFollowUpTime] = useState("")
   const [newFieldName, setNewFieldName] = useState("")
   const [newFieldValue, setNewFieldValue] = useState("")
   const [reminderNote, setReminderNote] = useState("")
@@ -89,15 +91,23 @@ export function DealCardDialog({
     })
   }
 
-  function handleAddNote() {
+  function handleLogInteraction() {
     if (!noteText.trim() || !canEdit) return
     startTransition(async () => {
       try {
         await addNote(deal.id, noteText.trim())
+        if (followUpDate) {
+          const dateStr = followUpTime
+            ? `${followUpDate}T${followUpTime}`
+            : `${followUpDate}T09:00`
+          await addReminder(deal.id, noteText.trim(), new Date(dateStr))
+        }
         setNoteText("")
+        setFollowUpDate("")
+        setFollowUpTime("")
         router.refresh()
       } catch (err) {
-        console.error("Add note error:", err)
+        console.error("Log interaction error:", err)
       }
     })
   }
@@ -434,12 +444,41 @@ export function DealCardDialog({
               <Textarea
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
-                placeholder="Add a note..."
+                placeholder="What happened? (call, email, update, next steps...)"
                 className="min-h-[60px]"
               />
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Follow up on:</span>
+                <Input
+                  type="date"
+                  value={followUpDate}
+                  onChange={(e) => setFollowUpDate(e.target.value)}
+                  className="h-8 w-36 text-xs"
+                />
+                <Select value={followUpTime} onValueChange={setFollowUpTime}>
+                  <SelectTrigger className="h-8 w-24 text-xs">
+                    <SelectValue placeholder="Time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REMINDER_TIMES.map((t) => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {followUpDate && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => { setFollowUpDate(""); setFollowUpTime("") }}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
               <div className="flex justify-between">
-                <Button onClick={handleAddNote} size="sm" disabled={isPending}>
-                  Add Note
+                <Button onClick={handleLogInteraction} size="sm" disabled={isPending || !noteText.trim()}>
+                  {followUpDate ? "Log & Set Follow-up" : "Add Note"}
                 </Button>
                 <Button
                   onClick={handleDelete}

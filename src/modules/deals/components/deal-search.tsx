@@ -30,6 +30,16 @@ export function DealSearch({ columns, allLabels, canEdit }: DealSearchProps) {
     col.deals.map((deal) => ({ deal, columnTitle: col.title }))
   )
 
+  // Keep the open dialog's deal in sync with fresh server data (e.g. after
+  // adding a note or reminder triggers router.refresh()) — otherwise the
+  // dialog keeps showing the stale snapshot captured at selection time.
+  useEffect(() => {
+    if (!selectedDeal) return
+    const fresh = allDeals.find(({ deal }) => deal.id === selectedDeal.id)?.deal
+    setSelectedDeal(fresh ?? null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columns])
+
   const q = query.trim().toLowerCase()
   const results: FlatDeal[] = q.length === 0 ? [] : allDeals.filter(({ deal }) =>
     deal.company?.toLowerCase().includes(q) ||

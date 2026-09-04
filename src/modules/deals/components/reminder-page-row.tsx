@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Check, Pause, Play, Clock, Pencil, Trash2 } from "lucide-react"
-import { updateReminder, markReminderDone, deleteReminder } from "../actions"
+import { updateReminder, markReminderDone, deleteReminder, addReminder } from "../actions"
 import { formatDateTime } from "@/lib/format-date"
 import type { DealReminder } from "../types"
 
@@ -27,6 +27,7 @@ export function ReminderPageRow({ data, canEdit }: ReminderPageRowProps) {
   const [editing, setEditing] = useState(false)
   const [editDate, setEditDate] = useState("")
   const [editTime, setEditTime] = useState("")
+  const [askReschedule, setAskReschedule] = useState(false)
 
   const isDue =
     reminder.status === "active" && new Date(reminder.dueAt) <= new Date()
@@ -45,10 +46,16 @@ export function ReminderPageRow({ data, canEdit }: ReminderPageRowProps) {
     })
   }
 
-  function handleDone() {
+  function finalizeDone(followUpInDays: number | null) {
     startTransition(async () => {
       try {
         await markReminderDone(reminder.id)
+        if (followUpInDays !== null) {
+          const next = new Date()
+          next.setDate(next.getDate() + followUpInDays)
+          await addReminder(reminder.dealId, reminder.note, next)
+        }
+        setAskReschedule(false)
         router.refresh()
       } catch (err) {
         console.error("Mark done error:", err)
@@ -148,7 +155,7 @@ export function ReminderPageRow({ data, canEdit }: ReminderPageRowProps) {
               variant="outline"
               size="sm"
               className="h-8 w-8 p-0"
-              onClick={handleDone}
+              onClick={() => setAskReschedule(true)}
               disabled={isPending}
               title="Mark done"
             >
@@ -199,6 +206,24 @@ export function ReminderPageRow({ data, canEdit }: ReminderPageRowProps) {
           </div>
         )}
       </CardContent>
+
+      {askReschedule && canEdit && (
+        <div className="flex flex-wrap items-center gap-1.5 border-t px-3 py-2">
+          <span className="text-xs text-muted-foreground">Follow up again in:</span>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => finalizeDone(7)} disabled={isPending}>
+            1 week
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => finalizeDone(14)} disabled={isPending}>
+            2 weeks
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => finalizeDone(30)} disabled={isPending}>
+            1 month
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => finalizeDone(null)} disabled={isPending}>
+            No follow-up
+          </Button>
+        </div>
+      )}
     </Card>
   )
 }
