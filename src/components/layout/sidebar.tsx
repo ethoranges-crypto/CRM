@@ -37,7 +37,7 @@ export function Sidebar({ canEdit }: SidebarProps) {
           >
             <mod.icon className="h-4 w-4" />
             {mod.name}
-            {mod.id === "reminders" && dueCount > 0 && (
+            {(mod.id === "reminders" || mod.id === "today") && dueCount > 0 && (
               <Badge
                 variant="destructive"
                 className="ml-auto h-5 min-w-5 justify-center rounded-full px-1.5 text-xs"

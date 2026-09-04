@@ -1,4 +1,4 @@
-import { type LucideIcon, Kanban, MessageCircle, Bell } from "lucide-react"
+import { type LucideIcon, Kanban, MessageCircle, Bell, Sunrise } from "lucide-react"
 
 export interface ModuleDefinition {
   id: string
@@ -9,6 +9,13 @@ export interface ModuleDefinition {
 }
 
 export const modules: ModuleDefinition[] = [
+  {
+    id: "today",
+    name: "Today",
+    href: "/today",
+    icon: Sunrise,
+    description: "Everything due for follow-up right now",
+  },
   {
     id: "deals",
     name: "Deal Pipeline",
