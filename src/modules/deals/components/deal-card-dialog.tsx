@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Trash2, Plus, X, Bell, Flag, Target, Phone, Moon } from "lucide-react"
+import { Trash2, Plus, X, Bell, Flag, Target, Phone, Moon, Mail, Users, StickyNote } from "lucide-react"
 import {
   addNote,
   deleteDeal,
@@ -35,7 +35,15 @@ import {
 } from "../actions"
 import { LabelPicker } from "./label-picker"
 import { ReminderRow } from "./reminder-row"
+import { NOTE_TYPES, NOTE_TYPE_LABELS, isNoteType, type NoteType } from "../note-types"
 import type { DealWithNotes, Label } from "../types"
+
+const NOTE_TYPE_ICONS: Record<NoteType, typeof Phone> = {
+  note: StickyNote,
+  call: Phone,
+  email: Mail,
+  meeting: Users,
+}
 
 // 08:00–19:00 in 30-min increments
 const REMINDER_TIMES = Array.from({ length: 23 }, (_, i) => {
@@ -68,6 +76,7 @@ export function DealCardDialog({
   const [actionTakenAt, setActionTakenAt] = useState<Date | null>(deal.actionTakenAt ?? null)
   const [actionNote, setActionNote] = useState(deal.actionNote ?? "")
   const [noteText, setNoteText] = useState("")
+  const [noteType, setNoteType] = useState<NoteType>("note")
   const [followUpDate, setFollowUpDate] = useState("")
   const [followUpTime, setFollowUpTime] = useState("")
   const [newFieldName, setNewFieldName] = useState("")
@@ -150,7 +159,7 @@ export function DealCardDialog({
     if (!noteText.trim() || !canEdit) return
     startTransition(async () => {
       try {
-        await addNote(deal.id, noteText.trim())
+        await addNote(deal.id, noteText.trim(), noteType)
         if (followUpDate) {
           const dateStr = followUpTime
             ? `${followUpDate}T${followUpTime}`
@@ -158,6 +167,7 @@ export function DealCardDialog({
           await addReminder(deal.id, noteText.trim(), new Date(dateStr))
         }
         setNoteText("")
+        setNoteType("note")
         setFollowUpDate("")
         setFollowUpTime("")
         router.refresh()
@@ -569,6 +579,15 @@ export function DealCardDialog({
               className="group flex items-start justify-between rounded bg-muted p-2 text-sm"
             >
               <div className="min-w-0 flex-1">
+                {isNoteType(note.type) && note.type !== "note" && (
+                  <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {(() => {
+                      const Icon = NOTE_TYPE_ICONS[note.type]
+                      return <Icon className="h-2.5 w-2.5" />
+                    })()}
+                    {NOTE_TYPE_LABELS[note.type]}
+                  </span>
+                )}
                 <p className="whitespace-pre-wrap break-words">{note.content}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {formatDate(note.createdAt)}
@@ -597,6 +616,26 @@ export function DealCardDialog({
           ))}
           {canEdit && (
             <>
+              <div className="flex flex-wrap gap-1.5">
+                {NOTE_TYPES.map((t) => {
+                  const Icon = NOTE_TYPE_ICONS[t]
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setNoteType(t)}
+                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors ${
+                        noteType === t
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-input text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      <Icon className="h-3 w-3" />
+                      {NOTE_TYPE_LABELS[t]}
+                    </button>
+                  )
+                })}
+              </div>
               <Textarea
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
