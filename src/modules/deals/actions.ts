@@ -194,11 +194,12 @@ export async function reorderDeals(
 
 export async function addNote(
   dealId: string,
-  content: string
+  content: string,
+  type: string = "note"
 ): Promise<ActionResult> {
   if (!(await getCanEdit())) return { success: false, error: "Unauthorized" }
   try {
-    await db.insert(dealNotes).values({ id: nanoid(), dealId, content })
+    await db.insert(dealNotes).values({ id: nanoid(), dealId, content, type })
     revalidatePath("/deals")
     return { success: true }
   } catch (err) {

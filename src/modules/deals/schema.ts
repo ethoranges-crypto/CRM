@@ -34,6 +34,7 @@ export const dealNotes = sqliteTable("deal_notes", {
     .notNull()
     .references(() => deals.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
+  type: text("type").notNull().default("note"), // note | call | email | meeting
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),

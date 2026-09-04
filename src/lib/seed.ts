@@ -19,6 +19,9 @@ export async function seed() {
   try {
     await db.run(sql`ALTER TABLE deals ADD COLUMN action_note TEXT`)
   } catch { /* column already exists */ }
+  try {
+    await db.run(sql`ALTER TABLE deal_notes ADD COLUMN type TEXT NOT NULL DEFAULT 'note'`)
+  } catch { /* column already exists */ }
 
   // Todos table
   await db.run(sql`
