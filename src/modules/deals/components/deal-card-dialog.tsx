@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { formatDate } from "@/lib/format-date"
+import { isOverdue } from "@/lib/business-days"
 import {
   Dialog,
   DialogContent,
@@ -20,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Trash2, Plus, X, Bell, Flag, Phone, Mail, Users, StickyNote } from "lucide-react"
+import { Trash2, Plus, X, Bell, Flag, Target, Phone, Moon, Mail, Users, StickyNote } from "lucide-react"
 import {
   addNote,
   deleteDeal,
@@ -83,6 +84,16 @@ export function DealCardDialog({
   const [reminderNote, setReminderNote] = useState("")
   const [reminderDate, setReminderDate] = useState("")
   const [reminderTime, setReminderTime] = useState("")
+  const [nextAction, setNextAction] = useState(deal.nextAction ?? "")
+  const [nextActionDate, setNextActionDate] = useState(
+    deal.nextActionDate ? new Date(deal.nextActionDate).toISOString().split("T")[0] : ""
+  )
+  const [lastContactedAt, setLastContactedAt] = useState(
+    deal.lastContactedAt ? new Date(deal.lastContactedAt).toISOString().split("T")[0] : ""
+  )
+  const [snoozeUntil, setSnoozeUntil] = useState(
+    deal.snoozeUntil ? new Date(deal.snoozeUntil).toISOString().split("T")[0] : ""
+  )
 
   function handleSave() {
     if (!canEdit) return
@@ -96,6 +107,50 @@ export function DealCardDialog({
         router.refresh()
       } catch (err) {
         console.error("Save deal error:", err)
+      }
+    })
+  }
+
+  function handleSaveFollowUp() {
+    if (!canEdit) return
+    startTransition(async () => {
+      try {
+        await updateDeal(deal.id, {
+          nextAction: nextAction.trim() || null,
+          nextActionDate: nextActionDate ? new Date(nextActionDate) : null,
+          lastContactedAt: lastContactedAt ? new Date(lastContactedAt) : null,
+          snoozeUntil: snoozeUntil ? new Date(snoozeUntil) : null,
+        })
+        router.refresh()
+      } catch (err) {
+        console.error("Save follow-up error:", err)
+      }
+    })
+  }
+
+  function handleMarkContactedToday() {
+    if (!canEdit) return
+    const todayStr = new Date().toISOString().split("T")[0]
+    setLastContactedAt(todayStr)
+    startTransition(async () => {
+      try {
+        await updateDeal(deal.id, { lastContactedAt: new Date() })
+        router.refresh()
+      } catch (err) {
+        console.error("Mark contacted error:", err)
+      }
+    })
+  }
+
+  function handleClearSnooze() {
+    if (!canEdit) return
+    setSnoozeUntil("")
+    startTransition(async () => {
+      try {
+        await updateDeal(deal.id, { snoozeUntil: null })
+        router.refresh()
+      } catch (err) {
+        console.error("Clear snooze error:", err)
       }
     })
   }
@@ -169,7 +224,10 @@ export function DealCardDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+      <DialogContent
+        className="max-h-[85vh] max-w-2xl overflow-y-auto"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{canEdit ? "Edit Deal" : "View Deal"}</DialogTitle>
         </DialogHeader>
@@ -211,6 +269,104 @@ export function DealCardDialog({
               placeholder="@handle"
               readOnly={!canEdit}
             />
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Next action, last contacted, snooze */}
+        <div className="space-y-3">
+          <div>
+            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Target className="h-3 w-3" /> Next Action
+            </label>
+            <Input
+              value={nextAction}
+              onChange={(e) => canEdit && setNextAction(e.target.value)}
+              onBlur={canEdit ? handleSaveFollowUp : undefined}
+              placeholder="What's the next step?"
+              readOnly={!canEdit}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <label className="text-xs font-medium text-muted-foreground">
+                Next Action Date
+              </label>
+              <Input
+                type="date"
+                value={nextActionDate}
+                onChange={(e) => canEdit && setNextActionDate(e.target.value)}
+                onBlur={canEdit ? handleSaveFollowUp : undefined}
+                readOnly={!canEdit}
+              />
+              {nextActionDate && isOverdue(new Date(nextActionDate)) && (
+                <p className="mt-0.5 text-xs font-medium text-red-600 dark:text-red-400">
+                  Overdue
+                </p>
+              )}
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <Phone className="h-3 w-3" /> Last Contacted
+              </label>
+              <Input
+                type="date"
+                value={lastContactedAt}
+                onChange={(e) => canEdit && setLastContactedAt(e.target.value)}
+                onBlur={canEdit ? handleSaveFollowUp : undefined}
+                readOnly={!canEdit}
+              />
+            </div>
+            {canEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isPending}
+                onClick={handleMarkContactedToday}
+              >
+                Mark contacted today
+              </Button>
+            )}
+          </div>
+
+          <Separator />
+
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <Moon className="h-3 w-3" /> Snooze Until
+              </label>
+              <Input
+                type="date"
+                value={snoozeUntil}
+                onChange={(e) => canEdit && setSnoozeUntil(e.target.value)}
+                onBlur={canEdit ? handleSaveFollowUp : undefined}
+                readOnly={!canEdit}
+              />
+              {snoozeUntil && (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {isOverdue(new Date(snoozeUntil))
+                    ? "Resurfaced — clear or update to dismiss"
+                    : "Hidden from Today's due-soon and cold sections until this date"}
+                </p>
+              )}
+            </div>
+            {canEdit && snoozeUntil && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={isPending}
+                onClick={handleClearSnooze}
+              >
+                Clear
+              </Button>
+            )}
           </div>
         </div>
 

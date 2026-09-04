@@ -18,6 +18,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -178,6 +182,19 @@ export function KanbanColumn({
                 <DropdownMenuItem onClick={() => setIsEditing(true)}>
                   <Pencil className="mr-2 h-3 w-3" /> Rename
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Stage</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={column.outcome}
+                  onValueChange={(value) =>
+                    updateColumn(column.id, { outcome: value as "open" | "won" | "lost" })
+                  }
+                >
+                  <DropdownMenuRadioItem value="open">Open</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="won">Won</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="lost">Lost</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => setShowDelete(true)}
                   className="text-destructive"

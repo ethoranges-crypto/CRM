@@ -4,6 +4,7 @@ export const pipelineColumns = sqliteTable("pipeline_columns", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   order: integer("order").notNull(),
+  outcome: text("outcome").notNull().default("open"), // open | won | lost
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -20,6 +21,10 @@ export const deals = sqliteTable("deals", {
   order: integer("order").notNull(),
   actionTakenAt: integer("action_taken_at", { mode: "timestamp" }),
   actionNote: text("action_note"),
+  nextAction: text("next_action"),
+  nextActionDate: integer("next_action_date", { mode: "timestamp" }),
+  lastContactedAt: integer("last_contacted_at", { mode: "timestamp" }),
+  snoozeUntil: integer("snooze_until", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
