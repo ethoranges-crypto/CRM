@@ -67,48 +67,6 @@ export function DueSoonQuickActions({ dealId }: { dealId: string }) {
   )
 }
 
-export function ColdQuickActions({ dealId }: { dealId: string }) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-
-  function handleMarkContacted(e: React.MouseEvent) {
-    stop(e)
-    startTransition(async () => {
-      await updateDeal(dealId, { lastContactedAt: new Date() })
-      router.refresh()
-    })
-  }
-
-  return (
-    <div onClick={stop} className="mt-2 border-t pt-2">
-      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleMarkContacted} disabled={isPending}>
-        Mark contacted today
-      </Button>
-    </div>
-  )
-}
-
-export function ResurfacedQuickActions({ dealId }: { dealId: string }) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-
-  function handleDismiss(e: React.MouseEvent) {
-    stop(e)
-    startTransition(async () => {
-      await updateDeal(dealId, { snoozeUntil: null })
-      router.refresh()
-    })
-  }
-
-  return (
-    <div onClick={stop} className="mt-2 border-t pt-2">
-      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleDismiss} disabled={isPending}>
-        Dismiss
-      </Button>
-    </div>
-  )
-}
-
 export function StaleActionQuickActions({ dealId }: { dealId: string }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()

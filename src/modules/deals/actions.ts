@@ -120,8 +120,6 @@ export async function updateDeal(
     telegramHandle?: string
     nextAction?: string | null
     nextActionDate?: Date | null
-    lastContactedAt?: Date | null
-    snoozeUntil?: Date | null
   }
 ): Promise<ActionResult> {
   if (!(await getCanEdit())) return { success: false, error: "Unauthorized" }

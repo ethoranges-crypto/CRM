@@ -12,7 +12,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Plus, Trash2, FolderKanban } from "lucide-react"
+import { Plus, Trash2, FolderKanban, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   createWorkspaceProject,
@@ -21,10 +21,11 @@ import {
   deleteWorkspaceProject,
 } from "../actions"
 import { PROJECT_STATUSES, PROJECT_STATUS_CONFIG, type ProjectStatus } from "../project-status"
-import type { WorkspaceProject } from "../types"
+import type { WorkspaceProjectWithNotes } from "../types"
+import { WorkspaceProjectNotesDialog } from "./workspace-project-notes-dialog"
 
 interface WorkspaceProjectsPanelProps {
-  initialProjects: WorkspaceProject[]
+  initialProjects: WorkspaceProjectWithNotes[]
 }
 
 export function WorkspaceProjectsPanel({ initialProjects }: WorkspaceProjectsPanelProps) {
@@ -118,13 +119,14 @@ function WorkspaceProjectRow({
   onStatusChange,
   onDelete,
 }: {
-  project: WorkspaceProject
+  project: WorkspaceProjectWithNotes
   onRename: (name: string) => void
   onStatusChange: (status: ProjectStatus) => void
   onDelete: () => void
 }) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(project.name)
+  const [notesOpen, setNotesOpen] = useState(false)
 
   useEffect(() => setName(project.name), [project.name])
 
@@ -142,65 +144,91 @@ function WorkspaceProjectRow({
     project.status in PROJECT_STATUS_CONFIG ? project.status : "not_started"
   ) as ProjectStatus
   const config = PROJECT_STATUS_CONFIG[status]
+  const latestNote = project.notes[0]
 
   return (
-    <div className="group flex items-center gap-2 rounded-md px-1 py-1.5 hover:bg-accent/50">
-      {editing ? (
-        <Input
-          autoFocus
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={handleSave}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSave()
-            if (e.key === "Escape") {
-              setName(project.name)
-              setEditing(false)
-            }
-          }}
-          className="h-7 flex-1 text-sm"
-        />
-      ) : (
-        <span
-          onClick={() => setEditing(true)}
-          className="flex-1 cursor-text truncate text-sm"
+    <div className="group rounded-md px-1 py-1.5 hover:bg-accent/50">
+      <div className="flex items-center gap-2">
+        {editing ? (
+          <Input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={handleSave}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSave()
+              if (e.key === "Escape") {
+                setName(project.name)
+                setEditing(false)
+              }
+            }}
+            className="h-7 flex-1 text-sm"
+          />
+        ) : (
+          <span
+            onClick={() => setEditing(true)}
+            className="flex-1 cursor-text truncate text-sm"
+          >
+            {project.name}
+          </span>
+        )}
+
+        <button
+          onClick={() => setNotesOpen(true)}
+          title="Notes"
+          className="shrink-0 text-muted-foreground/40 opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
         >
-          {project.name}
-        </span>
+          <MessageSquare className="h-3.5 w-3.5" />
+        </button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className={cn(
+                "shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium transition-opacity",
+                config.className
+              )}
+            >
+              {config.label}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuRadioGroup
+              value={status}
+              onValueChange={(value) => onStatusChange(value as ProjectStatus)}
+            >
+              {PROJECT_STATUSES.map((s) => (
+                <DropdownMenuRadioItem key={s} value={s}>
+                  {PROJECT_STATUS_CONFIG[s].label}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <button
+          onClick={onDelete}
+          title="Delete project"
+          className="shrink-0 text-muted-foreground/40 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {latestNote && (
+        <p
+          onClick={() => setNotesOpen(true)}
+          className="mt-0.5 cursor-pointer truncate pl-0.5 text-xs text-muted-foreground hover:text-foreground"
+        >
+          {latestNote.content}
+        </p>
       )}
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            className={cn(
-              "shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium transition-opacity",
-              config.className
-            )}
-          >
-            {config.label}
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuRadioGroup
-            value={status}
-            onValueChange={(value) => onStatusChange(value as ProjectStatus)}
-          >
-            {PROJECT_STATUSES.map((s) => (
-              <DropdownMenuRadioItem key={s} value={s}>
-                {PROJECT_STATUS_CONFIG[s].label}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <button
-        onClick={onDelete}
-        title="Delete project"
-        className="shrink-0 text-muted-foreground/40 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
+      <WorkspaceProjectNotesDialog
+        project={project}
+        open={notesOpen}
+        onOpenChange={setNotesOpen}
+      />
     </div>
   )
 }

@@ -39,10 +39,7 @@ export async function GET(request: NextRequest) {
       overdue: data.overdue.length,
       dueToday: data.dueToday.length,
       dueSoonDeals: data.dueSoonDeals.length,
-      resurfacedDeals: data.resurfacedDeals.length,
-      coldDeals: data.coldDeals.length,
       staleActionDeals: data.staleActionDeals.length,
-      urgentTodos: data.urgentTodos.length,
     })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)

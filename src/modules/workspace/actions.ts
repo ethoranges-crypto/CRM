@@ -2,12 +2,12 @@
 
 import { db } from "@/lib/db"
 import { getCanEdit } from "@/lib/auth"
-import { workspaceTasks, workspaceNotes, workspaceProjects } from "./schema"
-import { eq, asc } from "drizzle-orm"
+import { workspaceTasks, workspaceNotes, workspaceProjects, workspaceProjectNotes } from "./schema"
+import { eq, asc, desc } from "drizzle-orm"
 import { nanoid } from "nanoid"
 import { revalidatePath } from "next/cache"
 import { isProjectStatus } from "./project-status"
-import type { WorkspaceTask, WorkspaceNote, WorkspaceProject } from "./types"
+import type { WorkspaceTask, WorkspaceNote, WorkspaceProjectWithNotes } from "./types"
 
 // This whole page is a private personal workspace — same visibility rule as
 // the existing /todos page, not the shared read-only view deals/reminders get.
@@ -87,9 +87,19 @@ export async function deleteWorkspaceNote(id: string): Promise<void> {
 
 // ─── Projects ("Project status") ───
 
-export async function getWorkspaceProjects(): Promise<WorkspaceProject[]> {
+export async function getWorkspaceProjects(): Promise<WorkspaceProjectWithNotes[]> {
   if (!(await getCanEdit())) return []
-  return db.select().from(workspaceProjects).orderBy(asc(workspaceProjects.createdAt))
+  const projects = await db.select().from(workspaceProjects).orderBy(asc(workspaceProjects.createdAt))
+  return Promise.all(
+    projects.map(async (project) => {
+      const notes = await db
+        .select()
+        .from(workspaceProjectNotes)
+        .where(eq(workspaceProjectNotes.projectId, project.id))
+        .orderBy(desc(workspaceProjectNotes.createdAt))
+      return { ...project, notes }
+    })
+  )
 }
 
 export async function createWorkspaceProject(name: string): Promise<void> {
@@ -124,5 +134,21 @@ export async function updateWorkspaceProjectStatus(id: string, status: string): 
 export async function deleteWorkspaceProject(id: string): Promise<void> {
   if (!(await getCanEdit())) return
   await db.delete(workspaceProjects).where(eq(workspaceProjects.id, id))
+  revalidatePath("/workspace")
+}
+
+// ─── Project notes ───
+
+export async function addWorkspaceProjectNote(projectId: string, content: string): Promise<void> {
+  if (!(await getCanEdit())) return
+  const trimmed = content.trim()
+  if (!trimmed) return
+  await db.insert(workspaceProjectNotes).values({ id: nanoid(), projectId, content: trimmed })
+  revalidatePath("/workspace")
+}
+
+export async function deleteWorkspaceProjectNote(id: string): Promise<void> {
+  if (!(await getCanEdit())) return
+  await db.delete(workspaceProjectNotes).where(eq(workspaceProjectNotes.id, id))
   revalidatePath("/workspace")
 }

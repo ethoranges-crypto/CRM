@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Trash2, Plus, X, Bell, Flag, Target, Phone, Moon, Mail, Users, StickyNote, Check, Loader2 } from "lucide-react"
+import { Trash2, Plus, X, Bell, Flag, Target, Phone, Mail, Users, StickyNote, Check, Loader2 } from "lucide-react"
 import {
   addNote,
   deleteDeal,
@@ -88,12 +88,6 @@ export function DealCardDialog({
   const [nextActionDate, setNextActionDate] = useState(
     deal.nextActionDate ? new Date(deal.nextActionDate).toISOString().split("T")[0] : ""
   )
-  const [lastContactedAt, setLastContactedAt] = useState(
-    deal.lastContactedAt ? new Date(deal.lastContactedAt).toISOString().split("T")[0] : ""
-  )
-  const [snoozeUntil, setSnoozeUntil] = useState(
-    deal.snoozeUntil ? new Date(deal.snoozeUntil).toISOString().split("T")[0] : ""
-  )
 
   // Visible confirmation that an onBlur/click save actually happened — the
   // core and follow-up fields have no other feedback (no list to append to,
@@ -134,46 +128,11 @@ export function DealCardDialog({
         await updateDeal(deal.id, {
           nextAction: nextAction.trim() || null,
           nextActionDate: nextActionDate ? new Date(nextActionDate) : null,
-          lastContactedAt: lastContactedAt ? new Date(lastContactedAt) : null,
-          snoozeUntil: snoozeUntil ? new Date(snoozeUntil) : null,
         })
         markSaved()
         router.refresh()
       } catch (err) {
         console.error("Save follow-up error:", err)
-        setSaveStatus("idle")
-      }
-    })
-  }
-
-  function handleMarkContactedToday() {
-    if (!canEdit) return
-    const todayStr = new Date().toISOString().split("T")[0]
-    setLastContactedAt(todayStr)
-    setSaveStatus("saving")
-    startTransition(async () => {
-      try {
-        await updateDeal(deal.id, { lastContactedAt: new Date() })
-        markSaved()
-        router.refresh()
-      } catch (err) {
-        console.error("Mark contacted error:", err)
-        setSaveStatus("idle")
-      }
-    })
-  }
-
-  function handleClearSnooze() {
-    if (!canEdit) return
-    setSnoozeUntil("")
-    setSaveStatus("saving")
-    startTransition(async () => {
-      try {
-        await updateDeal(deal.id, { snoozeUntil: null })
-        markSaved()
-        router.refresh()
-      } catch (err) {
-        console.error("Clear snooze error:", err)
         setSaveStatus("idle")
       }
     })
@@ -310,7 +269,7 @@ export function DealCardDialog({
 
         <Separator />
 
-        {/* Next action, last contacted, snooze */}
+        {/* Next action */}
         <div className="space-y-3">
           <div>
             <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -342,67 +301,6 @@ export function DealCardDialog({
                 </p>
               )}
             </div>
-          </div>
-
-          <Separator />
-
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Phone className="h-3 w-3" /> Last Contacted
-              </label>
-              <Input
-                type="date"
-                value={lastContactedAt}
-                onChange={(e) => canEdit && setLastContactedAt(e.target.value)}
-                onBlur={canEdit ? handleSaveFollowUp : undefined}
-                readOnly={!canEdit}
-              />
-            </div>
-            {canEdit && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isPending}
-                onClick={handleMarkContactedToday}
-              >
-                Mark contacted today
-              </Button>
-            )}
-          </div>
-
-          <Separator />
-
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Moon className="h-3 w-3" /> Snooze Until
-              </label>
-              <Input
-                type="date"
-                value={snoozeUntil}
-                onChange={(e) => canEdit && setSnoozeUntil(e.target.value)}
-                onBlur={canEdit ? handleSaveFollowUp : undefined}
-                readOnly={!canEdit}
-              />
-              {snoozeUntil && (
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {isOverdue(new Date(snoozeUntil))
-                    ? "Resurfaced — clear or update to dismiss"
-                    : "Hidden from Today's due-soon and cold sections until this date"}
-                </p>
-              )}
-            </div>
-            {canEdit && snoozeUntil && (
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={isPending}
-                onClick={handleClearSnooze}
-              >
-                Clear
-              </Button>
-            )}
           </div>
         </div>
 

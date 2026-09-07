@@ -1,17 +1,11 @@
 import { getColumnsWithDeals } from "@/modules/deals/actions"
-import { db } from "@/lib/db"
-import { todos } from "@/modules/todos/schema"
-import { eq, and } from "drizzle-orm"
-import { businessDaysSince, daysSince, todayMidnight, addDays } from "@/lib/business-days"
+import { businessDaysSince, todayMidnight, addDays } from "@/lib/business-days"
 import { formatDate } from "@/lib/format-date"
 import {
   getActiveDeals,
   getDueSoonDeals,
-  getColdDeals,
-  getResurfacedDeals,
   type DueSoonDeal,
 } from "@/modules/deals/follow-up-rules"
-import type { DealWithNotes } from "@/modules/deals/types"
 
 const STALE_ACTION_BUSINESS_DAYS = 3
 
@@ -36,9 +30,6 @@ export type DigestData = {
   dueToday: DigestReminder[]
   staleActionDeals: DigestStaleDeal[]
   dueSoonDeals: DueSoonDeal[]
-  coldDeals: DealWithNotes[]
-  resurfacedDeals: DealWithNotes[]
-  urgentTodos: { id: string; text: string }[]
 }
 
 export async function getDigestData(): Promise<DigestData> {
@@ -47,7 +38,7 @@ export async function getDigestData(): Promise<DigestData> {
 
   // One fetch, shared with the Today dashboard's own data source, so the
   // digest and the dashboard can never drift out of sync on what counts as
-  // active/due-soon/cold/resurfaced.
+  // active/due-soon.
   const columns = await getColumnsWithDeals()
   const allDeals = columns.flatMap((c) => c.deals)
   const activeDeals = getActiveDeals(columns)
@@ -82,24 +73,16 @@ export async function getDigestData(): Promise<DigestData> {
     }))
     .sort((a, b) => b.businessDays - a.businessDays)
 
-  const urgentTodoRows = await db
-    .select({ id: todos.id, text: todos.text })
-    .from(todos)
-    .where(and(eq(todos.isUrgent, true), eq(todos.isCompleted, false)))
-
   return {
     overdue,
     dueToday,
     staleActionDeals,
     dueSoonDeals: getDueSoonDeals(activeDeals),
-    coldDeals: getColdDeals(activeDeals),
-    resurfacedDeals: getResurfacedDeals(activeDeals),
-    urgentTodos: urgentTodoRows,
   }
 }
 
 export function formatDigestMessage(data: DigestData): string {
-  const { overdue, dueToday, staleActionDeals, dueSoonDeals, coldDeals, resurfacedDeals, urgentTodos } = data
+  const { overdue, dueToday, staleActionDeals, dueSoonDeals } = data
   const dateStr = new Date().toLocaleDateString("en-GB", {
     weekday: "long",
     day: "2-digit",
@@ -111,10 +94,7 @@ export function formatDigestMessage(data: DigestData): string {
     overdue.length +
     dueToday.length +
     staleActionDeals.length +
-    dueSoonDeals.length +
-    coldDeals.length +
-    resurfacedDeals.length +
-    urgentTodos.length
+    dueSoonDeals.length
 
   const lines: string[] = [`CRM Digest — ${dateStr}`]
 
@@ -152,25 +132,6 @@ export function formatDigestMessage(data: DigestData): string {
     }
   }
 
-  if (resurfacedDeals.length > 0) {
-    lines.push("", `RESURFACED (${resurfacedDeals.length})`)
-    for (const d of resurfacedDeals) {
-      lines.push(`- ${dealLabel(d)} — snoozed until ${formatDate(d.snoozeUntil as Date)}`)
-    }
-  }
-
-  if (coldDeals.length > 0) {
-    lines.push("", `GOING COLD — NOT CONTACTED IN 14+ DAYS (${coldDeals.length})`)
-    for (const d of coldDeals) {
-      const effective = d.lastContactedAt ?? d.createdAt
-      const days = daysSince(effective)
-      const label = d.lastContactedAt
-        ? `${days}d since last contact`
-        : `never logged, ${days}d since created`
-      lines.push(`- ${dealLabel(d)} — ${label}`)
-    }
-  }
-
   if (staleActionDeals.length > 0) {
     lines.push("", `STALE ACTION ITEMS (${staleActionDeals.length})`)
     for (const d of staleActionDeals) {
@@ -179,18 +140,11 @@ export function formatDigestMessage(data: DigestData): string {
     }
   }
 
-  if (urgentTodos.length > 0) {
-    lines.push("", `URGENT TO-DOS (${urgentTodos.length})`)
-    for (const t of urgentTodos) {
-      lines.push(`- ${t.text}`)
-    }
-  }
-
   return lines.join("\n")
 }
 
 // Telegram's hard limit is 4096 UTF-16 code units per message; a busy day
-// across 7 possible sections can plausibly exceed that, and an oversized
+// across multiple sections can plausibly exceed that, and an oversized
 // send fails outright with nothing delivered — exactly when the digest
 // matters most. Split on section boundaries (blank lines) so a section's
 // bullet list never gets cut mid-way if avoidable.

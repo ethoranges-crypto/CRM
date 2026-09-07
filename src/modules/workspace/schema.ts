@@ -37,3 +37,14 @@ export const workspaceProjects = sqliteTable("workspace_projects", {
     .notNull()
     .$defaultFn(() => new Date()),
 })
+
+export const workspaceProjectNotes = sqliteTable("workspace_project_notes", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => workspaceProjects.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+})

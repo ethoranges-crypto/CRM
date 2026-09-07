@@ -83,6 +83,14 @@ export async function seed() {
       updated_at INTEGER NOT NULL
     )
   `)
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS workspace_project_notes (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL REFERENCES workspace_projects(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )
+  `)
 
   const existing = await db.select().from(pipelineColumns)
   if (existing.length === 0) {

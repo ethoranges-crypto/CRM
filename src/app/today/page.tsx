@@ -3,26 +3,17 @@ import {
   getAllActiveReminders,
   getLabels,
 } from "@/modules/deals/actions"
-import { getTodos } from "@/modules/todos/actions"
 import { getCanEdit } from "@/lib/auth"
 import { seed } from "@/lib/seed"
-import { businessDaysSince, daysSince } from "@/lib/business-days"
+import { businessDaysSince } from "@/lib/business-days"
 import { formatDate } from "@/lib/format-date"
-import {
-  getActiveDeals,
-  getDueSoonDeals,
-  getColdDeals,
-  getResurfacedDeals,
-} from "@/modules/deals/follow-up-rules"
+import { getActiveDeals, getDueSoonDeals } from "@/modules/deals/follow-up-rules"
 import { ReminderPageRow } from "@/modules/deals/components/reminder-page-row"
 import { TodayDealSpotlightCard } from "@/modules/deals/components/today-deal-spotlight-card"
 import {
   DueSoonQuickActions,
-  ColdQuickActions,
-  ResurfacedQuickActions,
   StaleActionQuickActions,
 } from "@/modules/deals/components/today-quick-actions"
-import { TodayTodoRow } from "@/modules/todos/components/today-todo-row"
 import { NotificationBanner } from "@/modules/deals/components/notification-banner"
 import { TodaySection } from "@/components/ui/today-section"
 
@@ -33,10 +24,9 @@ const STALE_ACTION_BUSINESS_DAYS = 3
 export default async function TodayPage() {
   await seed()
 
-  const [columns, reminders, todos, allLabels, canEdit] = await Promise.all([
+  const [columns, reminders, allLabels, canEdit] = await Promise.all([
     getColumnsWithDeals(),
     getAllActiveReminders(),
-    getTodos(),
     getLabels(),
     getCanEdit(),
   ])
@@ -68,19 +58,12 @@ export default async function TodayPage() {
 
   const activeDeals = getActiveDeals(columns)
   const dueSoonDeals = getDueSoonDeals(activeDeals)
-  const coldDeals = getColdDeals(activeDeals)
-  const resurfacedDeals = getResurfacedDeals(activeDeals)
-
-  const urgentTodos = todos.filter((t) => t.isUrgent && !t.isCompleted)
 
   const totalCount =
     overdue.length +
     dueToday.length +
     dueSoonDeals.length +
-    resurfacedDeals.length +
-    coldDeals.length +
-    staleDeals.length +
-    urgentTodos.length
+    staleDeals.length
 
   return (
     <div className="flex h-full flex-col">
@@ -138,56 +121,6 @@ export default async function TodayPage() {
           </TodaySection>
         )}
 
-        {resurfacedDeals.length > 0 && (
-          <TodaySection
-            title="Resurfaced"
-            count={resurfacedDeals.length}
-            className="text-blue-600 dark:text-blue-400"
-          >
-            {resurfacedDeals.map((deal) => (
-              <TodayDealSpotlightCard
-                key={deal.id}
-                deal={deal}
-                allLabels={allLabels}
-                canEdit={canEdit}
-                subtitle={`Snoozed until ${formatDate(deal.snoozeUntil as Date)}`}
-                badgeText="Resurfaced"
-                badgeClassName="border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-400"
-                quickActions={<ResurfacedQuickActions dealId={deal.id} />}
-              />
-            ))}
-          </TodaySection>
-        )}
-
-        {coldDeals.length > 0 && (
-          <TodaySection
-            title="Going Cold — not contacted in 14+ days"
-            count={coldDeals.length}
-            className="text-amber-600 dark:text-amber-500"
-          >
-            {coldDeals.map((deal) => {
-              const effective = deal.lastContactedAt ?? deal.createdAt
-              const days = daysSince(effective)
-              return (
-                <TodayDealSpotlightCard
-                  key={deal.id}
-                  deal={deal}
-                  allLabels={allLabels}
-                  canEdit={canEdit}
-                  subtitle={
-                    deal.lastContactedAt
-                      ? `Last contacted ${formatDate(deal.lastContactedAt)}`
-                      : "Never logged a contact"
-                  }
-                  badgeText={`${days}d`}
-                  badgeClassName="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
-                  quickActions={<ColdQuickActions dealId={deal.id} />}
-                />
-              )
-            })}
-          </TodaySection>
-        )}
-
         {staleDeals.length > 0 && (
           <TodaySection
             title="Stale Action Items"
@@ -209,18 +142,6 @@ export default async function TodayPage() {
                 />
               )
             })}
-          </TodaySection>
-        )}
-
-        {urgentTodos.length > 0 && (
-          <TodaySection
-            title="Urgent To-Dos"
-            count={urgentTodos.length}
-            className="text-red-600 dark:text-red-500"
-          >
-            {urgentTodos.map((todo) => (
-              <TodayTodoRow key={todo.id} todo={todo} />
-            ))}
           </TodaySection>
         )}
       </div>
