@@ -16,6 +16,12 @@ import {
 } from "@/modules/deals/follow-up-rules"
 import { ReminderPageRow } from "@/modules/deals/components/reminder-page-row"
 import { TodayDealSpotlightCard } from "@/modules/deals/components/today-deal-spotlight-card"
+import {
+  DueSoonQuickActions,
+  ColdQuickActions,
+  ResurfacedQuickActions,
+  StaleActionQuickActions,
+} from "@/modules/deals/components/today-quick-actions"
 import { TodayTodoRow } from "@/modules/todos/components/today-todo-row"
 import { NotificationBanner } from "@/modules/deals/components/notification-banner"
 import { TodaySection } from "@/components/ui/today-section"
@@ -126,6 +132,7 @@ export default async function TodayPage() {
                     : formatDate(deal.nextActionDate as Date)
                 }
                 badgeVariant={deal.overdue ? "destructive" : "outline"}
+                quickActions={<DueSoonQuickActions dealId={deal.id} />}
               />
             ))}
           </TodaySection>
@@ -146,6 +153,7 @@ export default async function TodayPage() {
                 subtitle={`Snoozed until ${formatDate(deal.snoozeUntil as Date)}`}
                 badgeText="Resurfaced"
                 badgeClassName="border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-400"
+                quickActions={<ResurfacedQuickActions dealId={deal.id} />}
               />
             ))}
           </TodaySection>
@@ -173,6 +181,7 @@ export default async function TodayPage() {
                   }
                   badgeText={`${days}d`}
                   badgeClassName="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
+                  quickActions={<ColdQuickActions dealId={deal.id} />}
                 />
               )
             })}
@@ -196,6 +205,7 @@ export default async function TodayPage() {
                   subtitle={deal.actionNote ?? undefined}
                   badgeText={`${days} business day${days !== 1 ? "s" : ""}`}
                   badgeClassName="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
+                  quickActions={<StaleActionQuickActions dealId={deal.id} />}
                 />
               )
             })}

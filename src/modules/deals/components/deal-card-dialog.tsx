@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { formatDate } from "@/lib/format-date"
 import { isOverdue } from "@/lib/business-days"
@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Trash2, Plus, X, Bell, Flag, Target, Phone, Moon, Mail, Users, StickyNote } from "lucide-react"
+import { Trash2, Plus, X, Bell, Flag, Target, Phone, Moon, Mail, Users, StickyNote, Check, Loader2 } from "lucide-react"
 import {
   addNote,
   deleteDeal,
@@ -95,8 +95,21 @@ export function DealCardDialog({
     deal.snoozeUntil ? new Date(deal.snoozeUntil).toISOString().split("T")[0] : ""
   )
 
+  // Visible confirmation that an onBlur/click save actually happened — the
+  // core and follow-up fields have no other feedback (no list to append to,
+  // unlike notes/reminders), so a silent save reads as "did this save?".
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle")
+  const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function markSaved() {
+    setSaveStatus("saved")
+    if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current)
+    savedTimeoutRef.current = setTimeout(() => setSaveStatus("idle"), 2000)
+  }
+
   function handleSave() {
     if (!canEdit) return
+    setSaveStatus("saving")
     startTransition(async () => {
       try {
         await updateDeal(deal.id, {
@@ -104,15 +117,18 @@ export function DealCardDialog({
           company: company || undefined,
           telegramHandle: tgHandle || undefined,
         })
+        markSaved()
         router.refresh()
       } catch (err) {
         console.error("Save deal error:", err)
+        setSaveStatus("idle")
       }
     })
   }
 
   function handleSaveFollowUp() {
     if (!canEdit) return
+    setSaveStatus("saving")
     startTransition(async () => {
       try {
         await updateDeal(deal.id, {
@@ -121,9 +137,11 @@ export function DealCardDialog({
           lastContactedAt: lastContactedAt ? new Date(lastContactedAt) : null,
           snoozeUntil: snoozeUntil ? new Date(snoozeUntil) : null,
         })
+        markSaved()
         router.refresh()
       } catch (err) {
         console.error("Save follow-up error:", err)
+        setSaveStatus("idle")
       }
     })
   }
@@ -132,12 +150,15 @@ export function DealCardDialog({
     if (!canEdit) return
     const todayStr = new Date().toISOString().split("T")[0]
     setLastContactedAt(todayStr)
+    setSaveStatus("saving")
     startTransition(async () => {
       try {
         await updateDeal(deal.id, { lastContactedAt: new Date() })
+        markSaved()
         router.refresh()
       } catch (err) {
         console.error("Mark contacted error:", err)
+        setSaveStatus("idle")
       }
     })
   }
@@ -145,12 +166,15 @@ export function DealCardDialog({
   function handleClearSnooze() {
     if (!canEdit) return
     setSnoozeUntil("")
+    setSaveStatus("saving")
     startTransition(async () => {
       try {
         await updateDeal(deal.id, { snoozeUntil: null })
+        markSaved()
         router.refresh()
       } catch (err) {
         console.error("Clear snooze error:", err)
+        setSaveStatus("idle")
       }
     })
   }
@@ -229,7 +253,19 @@ export function DealCardDialog({
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>{canEdit ? "Edit Deal" : "View Deal"}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {canEdit ? "Edit Deal" : "View Deal"}
+            {saveStatus === "saving" && (
+              <span className="flex items-center gap-1 text-xs font-normal text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+              </span>
+            )}
+            {saveStatus === "saved" && (
+              <span className="flex items-center gap-1 text-xs font-normal text-green-600 dark:text-green-400">
+                <Check className="h-3 w-3" /> Saved
+              </span>
+            )}
+          </DialogTitle>
         </DialogHeader>
 
         {/* Core fields */}
