@@ -7,7 +7,7 @@ import { modules } from "@/modules/registry"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { CheckSquare } from "lucide-react"
+import { CheckSquare, LayoutGrid } from "lucide-react"
 import { useReminderCountStore } from "@/modules/deals/reminder-store"
 
 interface SidebarProps {
@@ -63,6 +63,18 @@ export function Sidebar({ canEdit }: SidebarProps) {
             >
               <CheckSquare className="h-4 w-4" />
               To-Do
+            </Link>
+            <Link
+              href="/workspace"
+              className={cn(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                pathname.startsWith("/workspace")
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              )}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              My Workspace
             </Link>
           </>
         )}

@@ -56,6 +56,34 @@ export async function seed() {
     )
   `)
 
+  // My Workspace tables — personal, manual, independent of deals/Today.
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS workspace_tasks (
+      id TEXT PRIMARY KEY,
+      text TEXT NOT NULL,
+      is_completed INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `)
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS workspace_notes (
+      id TEXT PRIMARY KEY,
+      content TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `)
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS workspace_projects (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'not_started',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `)
+
   const existing = await db.select().from(pipelineColumns)
   if (existing.length === 0) {
     for (const col of defaultColumns) {
