@@ -24,6 +24,12 @@ export function daysSince(date: Date): number {
   return Math.round((todayMidnight().getTime() - start.getTime()) / 86_400_000)
 }
 
+// Calendar days until a given date — negative if it's in the past, 0 if
+// today, regardless of the date's own time-of-day.
+export function daysUntil(date: Date): number {
+  return -daysSince(date)
+}
+
 // Returns number of business days (Mon–Fri) since a given date
 export function businessDaysSince(date: Date): number {
   const start = new Date(date)

@@ -1,7 +1,7 @@
 import { getColumnsWithDeals, getLabels } from "@/modules/deals/actions"
 import { getCanEdit } from "@/lib/auth"
 import { seed } from "@/lib/seed"
-import { businessDaysSince } from "@/lib/business-days"
+import { businessDaysSince, daysUntil } from "@/lib/business-days"
 import { formatDate } from "@/lib/format-date"
 import { getActiveDeals, getDealsWithNextStep } from "@/modules/deals/follow-up-rules"
 import { TodayDealSpotlightCard } from "@/modules/deals/components/today-deal-spotlight-card"
@@ -93,6 +93,7 @@ export default async function TodayPage() {
                 badgeText={`Overdue — ${formatDate(deal.nextActionDate)}`}
                 badgeVariant="destructive"
                 quickActions={<NextStepQuickActions dealId={deal.id} />}
+                daysUntil={daysUntil(deal.nextActionDate)}
               />
             ))}
           </TodaySection>
@@ -110,6 +111,7 @@ export default async function TodayPage() {
                 badgeText={formatDate(deal.nextActionDate)}
                 badgeVariant="outline"
                 quickActions={<NextStepQuickActions dealId={deal.id} />}
+                daysUntil={daysUntil(deal.nextActionDate)}
               />
             ))}
           </TodaySection>
@@ -127,6 +129,7 @@ export default async function TodayPage() {
                 badgeText={formatDate(deal.nextActionDate)}
                 badgeVariant="outline"
                 quickActions={<NextStepQuickActions dealId={deal.id} />}
+                daysUntil={daysUntil(deal.nextActionDate)}
               />
             ))}
           </TodaySection>
@@ -173,6 +176,7 @@ export default async function TodayPage() {
                 badgeText={formatDate(deal.nextActionDate)}
                 badgeVariant="outline"
                 quickActions={<NextStepQuickActions dealId={deal.id} />}
+                daysUntil={daysUntil(deal.nextActionDate)}
               />
             ))}
           </CollapsibleSection>

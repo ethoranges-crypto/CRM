@@ -16,6 +16,10 @@ interface TodayDealSpotlightCardProps {
   badgeClassName?: string
   subtitle?: string
   quickActions?: React.ReactNode
+  // Calendar days until due (negative = overdue, 0 = today) — shown as a
+  // large number under the date badge so urgency reads at a glance without
+  // having to work the date out yourself.
+  daysUntil?: number
 }
 
 // Generic "deal card that opens the full dialog on click" row shared by the
@@ -32,6 +36,7 @@ export function TodayDealSpotlightCard({
   badgeClassName,
   subtitle,
   quickActions,
+  daysUntil,
 }: TodayDealSpotlightCardProps) {
   const [open, setOpen] = useState(false)
 
@@ -54,9 +59,25 @@ export function TodayDealSpotlightCard({
                 <p className="mt-0.5 truncate text-sm text-muted-foreground">{subtitle}</p>
               )}
             </div>
-            <Badge variant={badgeVariant} className={cn("shrink-0", badgeClassName)}>
-              {badgeText}
-            </Badge>
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              <Badge variant={badgeVariant} className={badgeClassName}>
+                {badgeText}
+              </Badge>
+              {daysUntil !== undefined && (
+                <span
+                  className={cn(
+                    "text-2xl font-bold leading-none tabular-nums",
+                    daysUntil < 0
+                      ? "text-destructive"
+                      : daysUntil === 0
+                        ? "text-amber-600 dark:text-amber-500"
+                        : "text-foreground"
+                  )}
+                >
+                  {daysUntil}
+                </span>
+              )}
+            </div>
           </div>
           {canEdit && quickActions}
         </CardContent>
