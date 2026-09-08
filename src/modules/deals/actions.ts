@@ -11,10 +11,10 @@ import {
   dealLabels,
   dealReminders,
 } from "./schema"
-import { eq, asc, and, lte, or } from "drizzle-orm"
+import { eq, asc, and, lte, isNotNull } from "drizzle-orm"
 import { nanoid } from "nanoid"
 import { revalidatePath } from "next/cache"
-import type { ColumnWithDeals, Label, DealReminder } from "./types"
+import type { ColumnWithDeals, Label } from "./types"
 
 // ─── Result type for mutations ───
 
@@ -480,126 +480,26 @@ export async function reorderColumns(
   }
 }
 
-// ─── Reminders ───
+// ─── Next step (open deals' due-now notifications) ───
+//
+// Reminders were merged into each deal's single Next Action field — see
+// seed.ts's one-time migration. The deal_reminders table and its rows are
+// kept in the database for data safety but are no longer read or written
+// here; this section is the sole surviving "what's due" query.
 
-export async function addReminder(
-  dealId: string,
-  note: string,
-  dueAt: Date | string
-): Promise<ActionResult> {
-  if (!(await getCanEdit())) return { success: false, error: "Unauthorized" }
-  try {
-    const dueDate = typeof dueAt === "string" ? new Date(dueAt) : dueAt
-    await db
-      .insert(dealReminders)
-      .values({ id: nanoid(), dealId, note, dueAt: dueDate, status: "active" })
-    revalidatePath("/deals")
-    revalidatePath("/today")
-    return { success: true }
-  } catch (err) {
-    console.error("addReminder error:", err)
-    return { success: false, error: String(err) }
-  }
-}
-
-export async function updateReminder(
-  reminderId: string,
-  data: { note?: string; dueAt?: Date | string; status?: string }
-): Promise<ActionResult> {
-  if (!(await getCanEdit())) return { success: false, error: "Unauthorized" }
-  try {
-    const updateData: { note?: string; dueAt?: Date | string; status?: string; updatedAt: Date } = {
-      ...data,
-      updatedAt: new Date(),
-    }
-    if (typeof updateData.dueAt === "string") {
-      updateData.dueAt = new Date(updateData.dueAt)
-    }
-    await db
-      .update(dealReminders)
-      .set(updateData as { note?: string; dueAt?: Date; status?: string; updatedAt: Date })
-      .where(eq(dealReminders.id, reminderId))
-    revalidatePath("/deals")
-    revalidatePath("/today")
-    return { success: true }
-  } catch (err) {
-    console.error("updateReminder error:", err)
-    return { success: false, error: String(err) }
-  }
-}
-
-export async function deleteReminder(
-  reminderId: string
-): Promise<ActionResult> {
-  if (!(await getCanEdit())) return { success: false, error: "Unauthorized" }
-  try {
-    await db.delete(dealReminders).where(eq(dealReminders.id, reminderId))
-    revalidatePath("/deals")
-    revalidatePath("/today")
-    return { success: true }
-  } catch (err) {
-    console.error("deleteReminder error:", err)
-    return { success: false, error: String(err) }
-  }
-}
-
-export async function markReminderDone(
-  reminderId: string
-): Promise<ActionResult> {
-  if (!(await getCanEdit())) return { success: false, error: "Unauthorized" }
-  try {
-    await db
-      .update(dealReminders)
-      .set({ status: "done", updatedAt: new Date() })
-      .where(eq(dealReminders.id, reminderId))
-    revalidatePath("/deals")
-    revalidatePath("/today")
-    return { success: true }
-  } catch (err) {
-    console.error("markReminderDone error:", err)
-    return { success: false, error: String(err) }
-  }
-}
-
-export async function getDueReminders(): Promise<DealReminder[]> {
-  return db
-    .select()
-    .from(dealReminders)
-    .where(
-      and(
-        eq(dealReminders.status, "active"),
-        lte(dealReminders.dueAt, new Date())
-      )
-    )
-}
-
-export async function getDueReminderCount(): Promise<number> {
+export async function getDueNextSteps(): Promise<
+  { id: string; note: string; nextActionDate: Date }[]
+> {
   const rows = await db
-    .select()
-    .from(dealReminders)
+    .select({ id: deals.id, note: deals.nextAction, nextActionDate: deals.nextActionDate })
+    .from(deals)
+    .innerJoin(pipelineColumns, eq(pipelineColumns.id, deals.columnId))
     .where(
       and(
-        eq(dealReminders.status, "active"),
-        lte(dealReminders.dueAt, new Date())
+        eq(pipelineColumns.outcome, "open"),
+        isNotNull(deals.nextActionDate),
+        lte(deals.nextActionDate, new Date())
       )
     )
-  return rows.length
-}
-
-export async function getAllActiveReminders() {
-  return db
-    .select({
-      reminder: dealReminders,
-      dealAlias: deals.alias,
-      dealCompany: deals.company,
-    })
-    .from(dealReminders)
-    .innerJoin(deals, eq(deals.id, dealReminders.dealId))
-    .where(
-      or(
-        eq(dealReminders.status, "active"),
-        eq(dealReminders.status, "paused")
-      )
-    )
-    .orderBy(asc(dealReminders.dueAt))
+  return rows.map((r) => ({ id: r.id, note: r.note ?? "", nextActionDate: r.nextActionDate as Date }))
 }

@@ -12,15 +12,13 @@ function stop(e: React.MouseEvent) {
   e.stopPropagation()
 }
 
-// "Due in 7 days or less" cards are driven by nextAction/nextActionDate — a
-// separate mechanism from the deal-reminders system, which is a common
-// point of confusion (clearing a reminder does nothing to these fields).
-// "Done" clears both, dropping the card off Today immediately. "Remind
-// again in…" pushes the date out, which removes it from Today until it's
-// back within the 7-day window — no separate snooze/resurface involved.
-// "New step" replaces the instruction itself, for when the next action has
-// changed rather than just its timing.
-export function DueSoonQuickActions({ dealId }: { dealId: string }) {
+// Every deal-driven Today bucket (Overdue, Due Today, Due This Week, Later)
+// shares this same set of actions on its next-step cards. "Done" clears the
+// next step, dropping the card off Today immediately. "Remind again in…"
+// pushes the date out without changing the instruction. "New step" replaces
+// the instruction itself, for when the next action has changed rather than
+// just its timing.
+export function NextStepQuickActions({ dealId }: { dealId: string }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [newStepOpen, setNewStepOpen] = useState(false)

@@ -1,17 +1,12 @@
-import {
-  getColumnsWithDeals,
-  getAllActiveReminders,
-  getLabels,
-} from "@/modules/deals/actions"
+import { getColumnsWithDeals, getLabels } from "@/modules/deals/actions"
 import { getCanEdit } from "@/lib/auth"
 import { seed } from "@/lib/seed"
 import { businessDaysSince } from "@/lib/business-days"
 import { formatDate } from "@/lib/format-date"
-import { getActiveDeals, getDueSoonDeals } from "@/modules/deals/follow-up-rules"
-import { ReminderPageRow } from "@/modules/deals/components/reminder-page-row"
+import { getActiveDeals, getDealsWithNextStep } from "@/modules/deals/follow-up-rules"
 import { TodayDealSpotlightCard } from "@/modules/deals/components/today-deal-spotlight-card"
 import {
-  DueSoonQuickActions,
+  NextStepQuickActions,
   StaleActionQuickActions,
 } from "@/modules/deals/components/today-quick-actions"
 import { NotificationBanner } from "@/modules/deals/components/notification-banner"
@@ -25,9 +20,8 @@ const STALE_ACTION_BUSINESS_DAYS = 3
 export default async function TodayPage() {
   await seed()
 
-  const [columns, reminders, allLabels, canEdit] = await Promise.all([
+  const [columns, allLabels, canEdit] = await Promise.all([
     getColumnsWithDeals(),
-    getAllActiveReminders(),
     getLabels(),
     getCanEdit(),
   ])
@@ -39,25 +33,19 @@ export default async function TodayPage() {
   const weekFromMidnight = new Date(todayMidnight)
   weekFromMidnight.setDate(weekFromMidnight.getDate() + 7)
 
-  const activeReminders = reminders.filter((r) => r.reminder.status === "active")
-  const overdue = activeReminders.filter(
-    (r) => new Date(r.reminder.dueAt) < todayMidnight
-  )
-  const dueToday = activeReminders.filter((r) => {
-    const due = new Date(r.reminder.dueAt)
-    return due >= todayMidnight && due < tomorrowMidnight
-  })
-  const dueThisWeek = activeReminders.filter((r) => {
-    const due = new Date(r.reminder.dueAt)
-    return due >= tomorrowMidnight && due < weekFromMidnight
-  })
-  const dueLater = activeReminders.filter(
-    (r) => new Date(r.reminder.dueAt) >= weekFromMidnight
-  )
-  const pausedReminders = reminders.filter((r) => r.reminder.status === "paused")
+  const activeDeals = getActiveDeals(columns)
+  const dealsWithNextStep = getDealsWithNextStep(activeDeals)
 
-  const staleDeals = columns
-    .flatMap((c) => c.deals)
+  const overdueDeals = dealsWithNextStep.filter((d) => d.nextActionDate < todayMidnight)
+  const dueTodayDeals = dealsWithNextStep.filter(
+    (d) => d.nextActionDate >= todayMidnight && d.nextActionDate < tomorrowMidnight
+  )
+  const dueThisWeekDeals = dealsWithNextStep.filter(
+    (d) => d.nextActionDate >= tomorrowMidnight && d.nextActionDate < weekFromMidnight
+  )
+  const laterDeals = dealsWithNextStep.filter((d) => d.nextActionDate >= weekFromMidnight)
+
+  const staleDeals = activeDeals
     .filter(
       (d) => d.actionTakenAt && businessDaysSince(d.actionTakenAt) >= STALE_ACTION_BUSINESS_DAYS
     )
@@ -67,17 +55,12 @@ export default async function TodayPage() {
         businessDaysSince(a.actionTakenAt as Date)
     )
 
-  const activeDeals = getActiveDeals(columns)
-  const dueSoonDeals = getDueSoonDeals(activeDeals)
-
   const totalCount =
-    overdue.length +
-    dueToday.length +
-    dueSoonDeals.length +
+    overdueDeals.length +
+    dueTodayDeals.length +
+    dueThisWeekDeals.length +
     staleDeals.length +
-    dueThisWeek.length +
-    dueLater.length +
-    pausedReminders.length
+    laterDeals.length
 
   return (
     <div className="flex h-full flex-col">
@@ -98,38 +81,52 @@ export default async function TodayPage() {
           </div>
         )}
 
-        {overdue.length > 0 && (
-          <TodaySection title="Overdue" count={overdue.length} className="text-destructive">
-            {overdue.map((r) => (
-              <ReminderPageRow key={r.reminder.id} data={r} canEdit={canEdit} />
-            ))}
-          </TodaySection>
-        )}
-
-        {dueToday.length > 0 && (
-          <TodaySection title="Due Today" count={dueToday.length}>
-            {dueToday.map((r) => (
-              <ReminderPageRow key={r.reminder.id} data={r} canEdit={canEdit} />
-            ))}
-          </TodaySection>
-        )}
-
-        {dueSoonDeals.length > 0 && (
-          <TodaySection title="Due in 7 days or less" count={dueSoonDeals.length}>
-            {dueSoonDeals.map((deal) => (
+        {overdueDeals.length > 0 && (
+          <TodaySection title="Overdue" count={overdueDeals.length} className="text-destructive">
+            {overdueDeals.map((deal) => (
               <TodayDealSpotlightCard
                 key={deal.id}
                 deal={deal}
                 allLabels={allLabels}
                 canEdit={canEdit}
                 subtitle={deal.nextAction ?? undefined}
-                badgeText={
-                  deal.overdue
-                    ? `Overdue — ${formatDate(deal.nextActionDate as Date)}`
-                    : formatDate(deal.nextActionDate as Date)
-                }
-                badgeVariant={deal.overdue ? "destructive" : "outline"}
-                quickActions={<DueSoonQuickActions dealId={deal.id} />}
+                badgeText={`Overdue — ${formatDate(deal.nextActionDate)}`}
+                badgeVariant="destructive"
+                quickActions={<NextStepQuickActions dealId={deal.id} />}
+              />
+            ))}
+          </TodaySection>
+        )}
+
+        {dueTodayDeals.length > 0 && (
+          <TodaySection title="Due Today" count={dueTodayDeals.length}>
+            {dueTodayDeals.map((deal) => (
+              <TodayDealSpotlightCard
+                key={deal.id}
+                deal={deal}
+                allLabels={allLabels}
+                canEdit={canEdit}
+                subtitle={deal.nextAction ?? undefined}
+                badgeText={formatDate(deal.nextActionDate)}
+                badgeVariant="outline"
+                quickActions={<NextStepQuickActions dealId={deal.id} />}
+              />
+            ))}
+          </TodaySection>
+        )}
+
+        {dueThisWeekDeals.length > 0 && (
+          <TodaySection title="Due This Week" count={dueThisWeekDeals.length}>
+            {dueThisWeekDeals.map((deal) => (
+              <TodayDealSpotlightCard
+                key={deal.id}
+                deal={deal}
+                allLabels={allLabels}
+                canEdit={canEdit}
+                subtitle={deal.nextAction ?? undefined}
+                badgeText={formatDate(deal.nextActionDate)}
+                badgeVariant="outline"
+                quickActions={<NextStepQuickActions dealId={deal.id} />}
               />
             ))}
           </TodaySection>
@@ -159,36 +156,24 @@ export default async function TodayPage() {
           </TodaySection>
         )}
 
-        {dueThisWeek.length > 0 && (
-          <CollapsibleSection title="Reminders This Week" count={dueThisWeek.length} defaultOpen>
-            {dueThisWeek.map((r) => (
-              <ReminderPageRow key={r.reminder.id} data={r} canEdit={canEdit} />
-            ))}
-          </CollapsibleSection>
-        )}
-
-        {dueLater.length > 0 && (
+        {laterDeals.length > 0 && (
           <CollapsibleSection
-            title="Reminders Later"
-            count={dueLater.length}
+            title="Later"
+            count={laterDeals.length}
             defaultOpen={false}
             headingClassName="text-muted-foreground"
           >
-            {dueLater.map((r) => (
-              <ReminderPageRow key={r.reminder.id} data={r} canEdit={canEdit} />
-            ))}
-          </CollapsibleSection>
-        )}
-
-        {pausedReminders.length > 0 && (
-          <CollapsibleSection
-            title="Paused Reminders"
-            count={pausedReminders.length}
-            defaultOpen={false}
-            headingClassName="text-muted-foreground"
-          >
-            {pausedReminders.map((r) => (
-              <ReminderPageRow key={r.reminder.id} data={r} canEdit={canEdit} />
+            {laterDeals.map((deal) => (
+              <TodayDealSpotlightCard
+                key={deal.id}
+                deal={deal}
+                allLabels={allLabels}
+                canEdit={canEdit}
+                subtitle={deal.nextAction ?? undefined}
+                badgeText={formatDate(deal.nextActionDate)}
+                badgeVariant="outline"
+                quickActions={<NextStepQuickActions dealId={deal.id} />}
+              />
             ))}
           </CollapsibleSection>
         )}

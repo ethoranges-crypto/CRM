@@ -5,26 +5,23 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 interface NewStepFormProps {
-  onSubmit: (text: string, date: string, time: string) => void
+  onSubmit: (text: string, date: string) => void
   onCancel: () => void
   isPending?: boolean
-  showTime?: boolean
   placeholder?: string
 }
 
 // Shared "replace this with a fresh instruction" form used by Today's
-// reminder rows and deal spotlight cards — distinct from just pushing the
-// same note/next-action back to a later date, this lets you type a new one.
+// deal spotlight cards — distinct from just pushing the same next-action
+// back to a later date, this lets you type a new one.
 export function NewStepForm({
   onSubmit,
   onCancel,
   isPending,
-  showTime = false,
   placeholder = "New next step...",
 }: NewStepFormProps) {
   const [text, setText] = useState("")
   const [date, setDate] = useState("")
-  const [time, setTime] = useState("")
 
   return (
     <div
@@ -43,20 +40,12 @@ export function NewStepForm({
         onChange={(e) => setDate(e.target.value)}
         className="h-7 w-32 text-xs"
       />
-      {showTime && (
-        <Input
-          type="time"
-          value={time}
-          onChange={(e) => setTime(e.target.value)}
-          className="h-7 w-24 text-xs"
-        />
-      )}
       <Button
         size="sm"
         variant="outline"
         className="h-7 text-xs"
         disabled={isPending || !text.trim() || !date}
-        onClick={() => onSubmit(text.trim(), date, time)}
+        onClick={() => onSubmit(text.trim(), date)}
       >
         Create
       </Button>

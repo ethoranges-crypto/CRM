@@ -6,7 +6,7 @@ import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Bell, Flag } from "lucide-react"
+import { Flag } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { setActionTaken } from "../actions"
 import { businessDaysSince, isOverdue } from "@/lib/business-days"
@@ -187,12 +187,6 @@ export function DealCard({
         )}
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {deal.reminders?.filter((r) => r.status === "active").length > 0 && (
-            <span className="flex items-center gap-0.5 text-amber-500">
-              <Bell className="h-3 w-3" />
-              {deal.reminders.filter((r) => r.status === "active").length}
-            </span>
-          )}
           {deal.notes.length > 0 && (
             <span>
               {deal.notes.length} note{deal.notes.length !== 1 ? "s" : ""}

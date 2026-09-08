@@ -1,6 +1,6 @@
 import { db } from "./db"
-import { pipelineColumns } from "@/modules/deals/schema"
-import { sql } from "drizzle-orm"
+import { pipelineColumns, deals, dealReminders } from "@/modules/deals/schema"
+import { sql, eq, inArray } from "drizzle-orm"
 import { nanoid } from "nanoid"
 
 const defaultColumns = [
@@ -111,4 +111,41 @@ export async function seed() {
   // that you want treated as open will keep getting reclassified.
   await db.run(sql`UPDATE pipeline_columns SET outcome = 'won' WHERE outcome = 'open' AND lower(title) LIKE '%won%'`)
   await db.run(sql`UPDATE pipeline_columns SET outcome = 'lost' WHERE outcome = 'open' AND lower(title) LIKE '%lost%'`)
+
+  // One-time cutover: Reminders and Next Action merge into a single per-deal
+  // "next step". Each deal's next step becomes the soonest due item among its
+  // current Next Action and its own active reminders, and every active
+  // reminder considered here is then flipped to 'done' — so this always
+  // converges to a no-op (no active reminders left to fold in) and a later
+  // manual edit to Next Action is never re-clobbered by this running again.
+  // Paused reminders are left untouched/dormant, matching their old
+  // "hidden until resumed" intent now that pause has no UI.
+  const activeReminders = await db
+    .select()
+    .from(dealReminders)
+    .where(eq(dealReminders.status, "active"))
+  if (activeReminders.length > 0) {
+    const byDeal = new Map<string, typeof activeReminders>()
+    for (const reminder of activeReminders) {
+      const list = byDeal.get(reminder.dealId) ?? []
+      list.push(reminder)
+      byDeal.set(reminder.dealId, list)
+    }
+    for (const [dealId, dealReminderRows] of byDeal) {
+      const [deal] = await db.select().from(deals).where(eq(deals.id, dealId))
+      if (deal) {
+        const soonest = dealReminderRows.reduce((a, b) => (a.dueAt < b.dueAt ? a : b))
+        if (!deal.nextActionDate || soonest.dueAt < deal.nextActionDate) {
+          await db
+            .update(deals)
+            .set({ nextAction: soonest.note, nextActionDate: soonest.dueAt })
+            .where(eq(deals.id, dealId))
+        }
+      }
+      await db
+        .update(dealReminders)
+        .set({ status: "done" })
+        .where(inArray(dealReminders.id, dealReminderRows.map((r) => r.id)))
+    }
+  }
 }

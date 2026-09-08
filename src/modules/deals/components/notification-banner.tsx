@@ -17,14 +17,14 @@ export function NotificationBanner() {
           <BellOff className="h-4 w-4 shrink-0 text-amber-600" />
           <p className="flex-1 text-sm text-amber-800 dark:text-amber-200">
             Desktop notifications are blocked. Please enable them in your
-            browser settings to receive reminder alerts.
+            browser settings to receive next-step alerts.
           </p>
         </>
       ) : (
         <>
           <Bell className="h-4 w-4 shrink-0 text-amber-600" />
           <p className="flex-1 text-sm text-amber-800 dark:text-amber-200">
-            Enable desktop notifications to get alerted when reminders are due.
+            Enable desktop notifications to get alerted when next steps are due.
           </p>
           <Button
             size="sm"

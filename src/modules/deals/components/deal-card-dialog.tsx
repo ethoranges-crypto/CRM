@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, useRef } from "react"
+import { useState, useEffect, useTransition, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { formatDate } from "@/lib/format-date"
 import { isOverdue } from "@/lib/business-days"
@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Trash2, Plus, X, Bell, Flag, Target, Phone, Mail, Users, StickyNote, Check, Loader2 } from "lucide-react"
+import { Trash2, Plus, X, Flag, Target, Phone, Mail, Users, StickyNote, Check, Loader2 } from "lucide-react"
 import {
   addNote,
   deleteDeal,
@@ -31,10 +31,8 @@ import {
   addCustomField,
   updateCustomField,
   deleteCustomField,
-  addReminder,
 } from "../actions"
 import { LabelPicker } from "./label-picker"
-import { ReminderRow } from "./reminder-row"
 import { NOTE_TYPES, NOTE_TYPE_LABELS, isNoteType, type NoteType } from "../note-types"
 import type { DealWithNotes, Label } from "../types"
 
@@ -46,7 +44,7 @@ const NOTE_TYPE_ICONS: Record<NoteType, typeof Phone> = {
 }
 
 // 08:00–19:00 in 30-min increments
-const REMINDER_TIMES = Array.from({ length: 23 }, (_, i) => {
+const TIME_OPTIONS = Array.from({ length: 23 }, (_, i) => {
   const totalMins = 8 * 60 + i * 30
   const h = Math.floor(totalMins / 60)
   const m = totalMins % 60
@@ -81,13 +79,25 @@ export function DealCardDialog({
   const [followUpTime, setFollowUpTime] = useState("")
   const [newFieldName, setNewFieldName] = useState("")
   const [newFieldValue, setNewFieldValue] = useState("")
-  const [reminderNote, setReminderNote] = useState("")
-  const [reminderDate, setReminderDate] = useState("")
-  const [reminderTime, setReminderTime] = useState("")
   const [nextAction, setNextAction] = useState(deal.nextAction ?? "")
   const [nextActionDate, setNextActionDate] = useState(
     deal.nextActionDate ? new Date(deal.nextActionDate).toISOString().split("T")[0] : ""
   )
+
+  // The dialog stays mounted while its `deal` prop is refreshed by quick
+  // actions elsewhere on the page (Today's Done/Remind-again/New step
+  // buttons) — without this, reopening it would show stale next-step text.
+  useEffect(() => {
+    setAlias(deal.alias)
+    setCompany(deal.company || "")
+    setTgHandle(deal.telegramHandle || "")
+    setActionTakenAt(deal.actionTakenAt ?? null)
+    setActionNote(deal.actionNote ?? "")
+    setNextAction(deal.nextAction ?? "")
+    setNextActionDate(
+      deal.nextActionDate ? new Date(deal.nextActionDate).toISOString().split("T")[0] : ""
+    )
+  }, [deal])
 
   // Visible confirmation that an onBlur/click save actually happened — the
   // core and follow-up fields have no other feedback (no list to append to,
@@ -147,7 +157,10 @@ export function DealCardDialog({
           const dateStr = followUpTime
             ? `${followUpDate}T${followUpTime}`
             : `${followUpDate}T09:00`
-          await addReminder(deal.id, noteText.trim(), new Date(dateStr))
+          await updateDeal(deal.id, {
+            nextAction: noteText.trim(),
+            nextActionDate: new Date(dateStr),
+          })
         }
         setNoteText("")
         setNoteType("note")
@@ -183,24 +196,6 @@ export function DealCardDialog({
         router.refresh()
       } catch (err) {
         console.error("Delete deal error:", err)
-      }
-    })
-  }
-
-  function handleAddReminder() {
-    if (!reminderDate || !reminderNote.trim() || !canEdit) return
-    startTransition(async () => {
-      try {
-        const dateStr = reminderTime
-          ? `${reminderDate}T${reminderTime}`
-          : `${reminderDate}T09:00`
-        await addReminder(deal.id, reminderNote.trim(), new Date(dateStr))
-        setReminderNote("")
-        setReminderDate("")
-        setReminderTime("")
-        router.refresh()
-      } catch (err) {
-        console.error("Add reminder error:", err)
       }
     })
   }
@@ -269,11 +264,11 @@ export function DealCardDialog({
 
         <Separator />
 
-        {/* Next action */}
+        {/* Next step */}
         <div className="space-y-3">
           <div>
             <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <Target className="h-3 w-3" /> Next Action
+              <Target className="h-3 w-3" /> Next Step
             </label>
             <Input
               value={nextAction}
@@ -286,7 +281,7 @@ export function DealCardDialog({
           <div className="flex items-center gap-2">
             <div className="flex-1">
               <label className="text-xs font-medium text-muted-foreground">
-                Next Action Date
+                Next Step Date
               </label>
               <Input
                 type="date"
@@ -446,61 +441,6 @@ export function DealCardDialog({
 
         <Separator />
 
-        {/* Reminders */}
-        <div className="space-y-2">
-          <h4 className="flex items-center gap-1.5 text-sm font-medium">
-            <Bell className="h-3.5 w-3.5" /> Reminders
-          </h4>
-          {deal.reminders.filter((r) => r.status !== "done").length === 0 && (
-            <p className="text-xs text-muted-foreground">No reminders set.</p>
-          )}
-          {deal.reminders
-            .filter((r) => r.status !== "done")
-            .map((reminder) => (
-              <ReminderRow key={reminder.id} reminder={reminder} canEdit={canEdit} />
-            ))}
-          {canEdit && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Input
-                  type="date"
-                  value={reminderDate}
-                  onChange={(e) => setReminderDate(e.target.value)}
-                  className="flex-1"
-                />
-                <Select value={reminderTime} onValueChange={setReminderTime}>
-                  <SelectTrigger className="w-28">
-                    <SelectValue placeholder="Time" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {REMINDER_TIMES.map((t) => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={reminderNote}
-                  onChange={(e) => setReminderNote(e.target.value)}
-                  placeholder="Reminder note..."
-                  className="flex-1"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleAddReminder}
-                  disabled={!reminderDate || !reminderNote.trim() || isPending}
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <Separator />
-
         {/* Notes */}
         <div className="space-y-3">
           <h4 className="text-sm font-medium">Notes</h4>
@@ -589,7 +529,7 @@ export function DealCardDialog({
                     <SelectValue placeholder="Time" />
                   </SelectTrigger>
                   <SelectContent>
-                    {REMINDER_TIMES.map((t) => (
+                    {TIME_OPTIONS.map((t) => (
                       <SelectItem key={t} value={t}>{t}</SelectItem>
                     ))}
                   </SelectContent>

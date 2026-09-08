@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       messagesSent: chunks.length,
       overdue: data.overdue.length,
       dueToday: data.dueToday.length,
-      dueSoonDeals: data.dueSoonDeals.length,
+      dueThisWeek: data.dueThisWeek.length,
       staleActionDeals: data.staleActionDeals.length,
     })
   } catch (err: unknown) {

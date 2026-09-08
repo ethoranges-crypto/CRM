@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { deals, dealNotes, dealReminders } from "@/modules/deals/schema"
+import { deals, dealNotes } from "@/modules/deals/schema"
 import { isNoteType } from "@/modules/deals/note-types"
 import { or, eq, sql } from "drizzle-orm"
 import { nanoid } from "nanoid"
@@ -18,8 +18,8 @@ import { revalidatePath } from "next/cache"
 //                              unless dealId is given
 //   summary: string          — the call summary / note content
 //   type?: "call"|"email"|"meeting"|"note" — defaults to "call"
-//   followUpInDays?: number  — if set, also creates a reminder that many
-//                              days out using the summary text
+//   followUpInDays?: number  — if set, also sets the deal's next step to the
+//                              summary text, due that many days out
 
 export async function POST(request: NextRequest) {
   const secret = process.env.NOTES_WEBHOOK_SECRET
@@ -106,15 +106,12 @@ export async function POST(request: NextRequest) {
 
     let reminderCreated = false
     if (typeof body.followUpInDays === "number" && body.followUpInDays > 0) {
-      const dueAt = new Date()
-      dueAt.setDate(dueAt.getDate() + body.followUpInDays)
-      await db.insert(dealReminders).values({
-        id: nanoid(),
-        dealId: targetDealId,
-        note: summary,
-        dueAt,
-        status: "active",
-      })
+      const nextActionDate = new Date()
+      nextActionDate.setDate(nextActionDate.getDate() + body.followUpInDays)
+      await db
+        .update(deals)
+        .set({ nextAction: summary, nextActionDate, updatedAt: new Date() })
+        .where(eq(deals.id, targetDealId))
       reminderCreated = true
     }
 

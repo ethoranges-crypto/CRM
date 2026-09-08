@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useCallback } from "react"
-import { getDueReminders } from "../actions"
+import { getDueNextSteps } from "../actions"
 import { useReminderCountStore } from "../reminder-store"
 
 export function useReminderNotifications() {
@@ -59,16 +59,19 @@ export function useReminderNotifications() {
 
   const checkReminders = useCallback(async () => {
     try {
-      const dueReminders = await getDueReminders()
-      setDueCount(dueReminders.length)
+      const dueSteps = await getDueNextSteps()
+      setDueCount(dueSteps.length)
 
-      for (const reminder of dueReminders) {
-        if (!notifiedIds.current.has(reminder.id)) {
-          notifiedIds.current.add(reminder.id)
+      for (const step of dueSteps) {
+        // Keyed by deal + due date, not just deal id, so setting a new next
+        // step on a deal that was already notified fires a fresh alert.
+        const key = `${step.id}-${new Date(step.nextActionDate).getTime()}`
+        if (!notifiedIds.current.has(key)) {
+          notifiedIds.current.add(key)
           fireNotification(
-            "CRM Reminder",
-            reminder.note,
-            `reminder-${reminder.id}`
+            "CRM Next Step",
+            step.note,
+            `next-step-${key}`
           )
         }
       }

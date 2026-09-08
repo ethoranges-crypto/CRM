@@ -1,21 +1,9 @@
 import { getColumnsWithDeals } from "@/modules/deals/actions"
 import { businessDaysSince, todayMidnight, addDays } from "@/lib/business-days"
 import { formatDate } from "@/lib/format-date"
-import {
-  getActiveDeals,
-  getDueSoonDeals,
-  type DueSoonDeal,
-} from "@/modules/deals/follow-up-rules"
+import { getActiveDeals, getDealsWithNextStep, type DealWithNextStep } from "@/modules/deals/follow-up-rules"
 
 const STALE_ACTION_BUSINESS_DAYS = 3
-
-export type DigestReminder = {
-  id: string
-  note: string
-  dueAt: Date
-  dealAlias: string
-  dealCompany: string | null
-}
 
 export type DigestStaleDeal = {
   id: string
@@ -26,41 +14,32 @@ export type DigestStaleDeal = {
 }
 
 export type DigestData = {
-  overdue: DigestReminder[]
-  dueToday: DigestReminder[]
+  overdue: DealWithNextStep[]
+  dueToday: DealWithNextStep[]
+  dueThisWeek: DealWithNextStep[]
   staleActionDeals: DigestStaleDeal[]
-  dueSoonDeals: DueSoonDeal[]
 }
 
 export async function getDigestData(): Promise<DigestData> {
   const start = todayMidnight()
-  const end = addDays(start, 1)
+  const tomorrow = addDays(start, 1)
+  const weekFromNow = addDays(start, 7)
 
   // One fetch, shared with the Today dashboard's own data source, so the
   // digest and the dashboard can never drift out of sync on what counts as
-  // active/due-soon.
+  // active/overdue/due-soon.
   const columns = await getColumnsWithDeals()
   const allDeals = columns.flatMap((c) => c.deals)
   const activeDeals = getActiveDeals(columns)
+  const dealsWithNextStep = getDealsWithNextStep(activeDeals)
 
-  const allReminders: DigestReminder[] = allDeals.flatMap((d) =>
-    d.reminders
-      .filter((r) => r.status === "active")
-      .map((r) => ({
-        id: r.id,
-        note: r.note,
-        dueAt: r.dueAt,
-        dealAlias: d.alias,
-        dealCompany: d.company,
-      }))
+  const overdue = dealsWithNextStep.filter((d) => d.nextActionDate.getTime() < start.getTime())
+  const dueToday = dealsWithNextStep.filter(
+    (d) => d.nextActionDate.getTime() >= start.getTime() && d.nextActionDate.getTime() < tomorrow.getTime()
   )
-
-  const overdue = allReminders
-    .filter((r) => r.dueAt.getTime() < start.getTime())
-    .sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime())
-  const dueToday = allReminders
-    .filter((r) => r.dueAt.getTime() >= start.getTime() && r.dueAt.getTime() < end.getTime())
-    .sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime())
+  const dueThisWeek = dealsWithNextStep.filter(
+    (d) => d.nextActionDate.getTime() >= tomorrow.getTime() && d.nextActionDate.getTime() < weekFromNow.getTime()
+  )
 
   const staleActionDeals: DigestStaleDeal[] = allDeals
     .filter((d) => d.actionTakenAt && businessDaysSince(d.actionTakenAt) >= STALE_ACTION_BUSINESS_DAYS)
@@ -73,16 +52,11 @@ export async function getDigestData(): Promise<DigestData> {
     }))
     .sort((a, b) => b.businessDays - a.businessDays)
 
-  return {
-    overdue,
-    dueToday,
-    staleActionDeals,
-    dueSoonDeals: getDueSoonDeals(activeDeals),
-  }
+  return { overdue, dueToday, dueThisWeek, staleActionDeals }
 }
 
 export function formatDigestMessage(data: DigestData): string {
-  const { overdue, dueToday, staleActionDeals, dueSoonDeals } = data
+  const { overdue, dueToday, dueThisWeek, staleActionDeals } = data
   const dateStr = new Date().toLocaleDateString("en-GB", {
     weekday: "long",
     day: "2-digit",
@@ -90,11 +64,7 @@ export function formatDigestMessage(data: DigestData): string {
     year: "numeric",
   })
 
-  const totalItems =
-    overdue.length +
-    dueToday.length +
-    staleActionDeals.length +
-    dueSoonDeals.length
+  const totalItems = overdue.length + dueToday.length + dueThisWeek.length + staleActionDeals.length
 
   const lines: string[] = [`CRM Digest — ${dateStr}`]
 
@@ -105,30 +75,25 @@ export function formatDigestMessage(data: DigestData): string {
 
   const dealLabel = (d: { alias: string; company: string | null }) =>
     d.company ? `${d.company} (${d.alias})` : d.alias
-  const reminderDealLabel = (d: { dealAlias: string; dealCompany: string | null }) =>
-    d.dealCompany ? `${d.dealCompany} (${d.dealAlias})` : d.dealAlias
 
   if (overdue.length > 0) {
     lines.push("", `OVERDUE (${overdue.length})`)
-    for (const r of overdue) {
-      lines.push(`- ${reminderDealLabel(r)}: ${r.note}`)
+    for (const d of overdue) {
+      lines.push(`- ${dealLabel(d)}: ${d.nextAction ?? "(no next step text)"} — was due ${formatDate(d.nextActionDate)}`)
     }
   }
 
   if (dueToday.length > 0) {
     lines.push("", `DUE TODAY (${dueToday.length})`)
-    for (const r of dueToday) {
-      lines.push(`- ${reminderDealLabel(r)}: ${r.note}`)
+    for (const d of dueToday) {
+      lines.push(`- ${dealLabel(d)}: ${d.nextAction ?? "(no next step text)"}`)
     }
   }
 
-  if (dueSoonDeals.length > 0) {
-    lines.push("", `NEXT ACTION DUE IN 7 DAYS OR LESS (${dueSoonDeals.length})`)
-    for (const d of dueSoonDeals) {
-      const dateLabel = d.overdue
-        ? `OVERDUE (was due ${formatDate(d.nextActionDate as Date)})`
-        : `due ${formatDate(d.nextActionDate as Date)}`
-      lines.push(`- ${dealLabel(d)}: ${d.nextAction ?? "(no next action text)"} — ${dateLabel}`)
+  if (dueThisWeek.length > 0) {
+    lines.push("", `NEXT STEP DUE THIS WEEK (${dueThisWeek.length})`)
+    for (const d of dueThisWeek) {
+      lines.push(`- ${dealLabel(d)}: ${d.nextAction ?? "(no next step text)"} — due ${formatDate(d.nextActionDate)}`)
     }
   }
 
