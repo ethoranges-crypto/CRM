@@ -494,7 +494,6 @@ export async function addReminder(
       .insert(dealReminders)
       .values({ id: nanoid(), dealId, note, dueAt: dueDate, status: "active" })
     revalidatePath("/deals")
-    revalidatePath("/reminders")
     revalidatePath("/today")
     return { success: true }
   } catch (err) {
@@ -521,7 +520,6 @@ export async function updateReminder(
       .set(updateData as { note?: string; dueAt?: Date; status?: string; updatedAt: Date })
       .where(eq(dealReminders.id, reminderId))
     revalidatePath("/deals")
-    revalidatePath("/reminders")
     revalidatePath("/today")
     return { success: true }
   } catch (err) {
@@ -537,7 +535,6 @@ export async function deleteReminder(
   try {
     await db.delete(dealReminders).where(eq(dealReminders.id, reminderId))
     revalidatePath("/deals")
-    revalidatePath("/reminders")
     revalidatePath("/today")
     return { success: true }
   } catch (err) {
@@ -556,7 +553,6 @@ export async function markReminderDone(
       .set({ status: "done", updatedAt: new Date() })
       .where(eq(dealReminders.id, reminderId))
     revalidatePath("/deals")
-    revalidatePath("/reminders")
     revalidatePath("/today")
     return { success: true }
   } catch (err) {

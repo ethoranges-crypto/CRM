@@ -16,6 +16,7 @@ import {
 } from "@/modules/deals/components/today-quick-actions"
 import { NotificationBanner } from "@/modules/deals/components/notification-banner"
 import { TodaySection } from "@/components/ui/today-section"
+import { CollapsibleSection } from "@/components/ui/collapsible-section"
 
 export const dynamic = "force-dynamic"
 
@@ -35,6 +36,8 @@ export default async function TodayPage() {
   todayMidnight.setHours(0, 0, 0, 0)
   const tomorrowMidnight = new Date(todayMidnight)
   tomorrowMidnight.setDate(tomorrowMidnight.getDate() + 1)
+  const weekFromMidnight = new Date(todayMidnight)
+  weekFromMidnight.setDate(weekFromMidnight.getDate() + 7)
 
   const activeReminders = reminders.filter((r) => r.reminder.status === "active")
   const overdue = activeReminders.filter(
@@ -44,6 +47,14 @@ export default async function TodayPage() {
     const due = new Date(r.reminder.dueAt)
     return due >= todayMidnight && due < tomorrowMidnight
   })
+  const dueThisWeek = activeReminders.filter((r) => {
+    const due = new Date(r.reminder.dueAt)
+    return due >= tomorrowMidnight && due < weekFromMidnight
+  })
+  const dueLater = activeReminders.filter(
+    (r) => new Date(r.reminder.dueAt) >= weekFromMidnight
+  )
+  const pausedReminders = reminders.filter((r) => r.reminder.status === "paused")
 
   const staleDeals = columns
     .flatMap((c) => c.deals)
@@ -63,7 +74,10 @@ export default async function TodayPage() {
     overdue.length +
     dueToday.length +
     dueSoonDeals.length +
-    staleDeals.length
+    staleDeals.length +
+    dueThisWeek.length +
+    dueLater.length +
+    pausedReminders.length
 
   return (
     <div className="flex h-full flex-col">
@@ -143,6 +157,40 @@ export default async function TodayPage() {
               )
             })}
           </TodaySection>
+        )}
+
+        {dueThisWeek.length > 0 && (
+          <CollapsibleSection title="Reminders This Week" count={dueThisWeek.length} defaultOpen>
+            {dueThisWeek.map((r) => (
+              <ReminderPageRow key={r.reminder.id} data={r} canEdit={canEdit} />
+            ))}
+          </CollapsibleSection>
+        )}
+
+        {dueLater.length > 0 && (
+          <CollapsibleSection
+            title="Reminders Later"
+            count={dueLater.length}
+            defaultOpen={false}
+            headingClassName="text-muted-foreground"
+          >
+            {dueLater.map((r) => (
+              <ReminderPageRow key={r.reminder.id} data={r} canEdit={canEdit} />
+            ))}
+          </CollapsibleSection>
+        )}
+
+        {pausedReminders.length > 0 && (
+          <CollapsibleSection
+            title="Paused Reminders"
+            count={pausedReminders.length}
+            defaultOpen={false}
+            headingClassName="text-muted-foreground"
+          >
+            {pausedReminders.map((r) => (
+              <ReminderPageRow key={r.reminder.id} data={r} canEdit={canEdit} />
+            ))}
+          </CollapsibleSection>
         )}
       </div>
     </div>

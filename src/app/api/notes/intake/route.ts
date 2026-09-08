@@ -119,7 +119,6 @@ export async function POST(request: NextRequest) {
     }
 
     revalidatePath("/deals")
-    revalidatePath("/reminders")
     revalidatePath("/today")
 
     return NextResponse.json({ success: true, dealId: targetDealId, reminderCreated })

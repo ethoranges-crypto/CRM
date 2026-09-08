@@ -6,9 +6,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Check, Pause, Play, Clock, Pencil, Trash2 } from "lucide-react"
+import { Check, Pause, Play, Clock, Pencil, Trash2, MessageSquarePlus } from "lucide-react"
 import { updateReminder, markReminderDone, deleteReminder, addReminder } from "../actions"
 import { formatDateTime } from "@/lib/format-date"
+import { NewStepForm } from "./new-step-form"
 import type { DealReminder } from "../types"
 
 interface ReminderPageRowProps {
@@ -28,6 +29,7 @@ export function ReminderPageRow({ data, canEdit }: ReminderPageRowProps) {
   const [editDate, setEditDate] = useState("")
   const [editTime, setEditTime] = useState("")
   const [askReschedule, setAskReschedule] = useState(false)
+  const [newStepOpen, setNewStepOpen] = useState(false)
 
   const isDue =
     reminder.status === "active" && new Date(reminder.dueAt) <= new Date()
@@ -68,6 +70,20 @@ export function ReminderPageRow({ data, canEdit }: ReminderPageRowProps) {
     setEditDate(d.toISOString().split("T")[0])
     setEditTime(d.toTimeString().slice(0, 5))
     setEditing(true)
+  }
+
+  function handleNewStep(text: string, date: string, time: string) {
+    startTransition(async () => {
+      try {
+        await markReminderDone(reminder.id)
+        const dateStr = time ? `${date}T${time}` : `${date}T09:00`
+        await addReminder(reminder.dealId, text, new Date(dateStr))
+        setNewStepOpen(false)
+        router.refresh()
+      } catch (err) {
+        console.error("New step error:", err)
+      }
+    })
   }
 
   function handleReschedule() {
@@ -188,6 +204,16 @@ export function ReminderPageRow({ data, canEdit }: ReminderPageRowProps) {
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0"
+              onClick={() => setNewStepOpen((v) => !v)}
+              disabled={isPending}
+              title="New step"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
               onClick={() => {
                 startTransition(async () => {
                   try {
@@ -222,6 +248,18 @@ export function ReminderPageRow({ data, canEdit }: ReminderPageRowProps) {
           <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => finalizeDone(null)} disabled={isPending}>
             No follow-up
           </Button>
+        </div>
+      )}
+
+      {newStepOpen && canEdit && (
+        <div className="border-t px-3 py-2">
+          <NewStepForm
+            onSubmit={handleNewStep}
+            onCancel={() => setNewStepOpen(false)}
+            isPending={isPending}
+            showTime
+            placeholder="New instruction..."
+          />
         </div>
       )}
     </Card>

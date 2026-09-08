@@ -1,4 +1,4 @@
-import { type LucideIcon, Kanban, MessageCircle, Bell, Sunrise } from "lucide-react"
+import { type LucideIcon, Kanban, MessageCircle, Sunrise } from "lucide-react"
 
 export interface ModuleDefinition {
   id: string
@@ -29,12 +29,5 @@ export const modules: ModuleDefinition[] = [
     href: "/telegram",
     icon: MessageCircle,
     description: "Parse and search Telegram contacts",
-  },
-  {
-    id: "reminders",
-    name: "Reminders",
-    href: "/reminders",
-    icon: Bell,
-    description: "View and manage deal reminders",
   },
 ]

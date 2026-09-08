@@ -1,9 +1,10 @@
 "use client"
 
-import { useTransition } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { updateDeal, setActionTaken } from "../actions"
+import { NewStepForm } from "./new-step-form"
 
 // Every handler stops propagation since these buttons live inside a card
 // whose own onClick opens the full deal dialog.
@@ -17,9 +18,12 @@ function stop(e: React.MouseEvent) {
 // "Done" clears both, dropping the card off Today immediately. "Remind
 // again in…" pushes the date out, which removes it from Today until it's
 // back within the 7-day window — no separate snooze/resurface involved.
+// "New step" replaces the instruction itself, for when the next action has
+// changed rather than just its timing.
 export function DueSoonQuickActions({ dealId }: { dealId: string }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [newStepOpen, setNewStepOpen] = useState(false)
 
   function handleDone(e: React.MouseEvent) {
     stop(e)
@@ -35,6 +39,14 @@ export function DueSoonQuickActions({ dealId }: { dealId: string }) {
       const next = new Date()
       next.setDate(next.getDate() + days)
       await updateDeal(dealId, { nextActionDate: next })
+      router.refresh()
+    })
+  }
+
+  function handleNewStep(text: string, date: string) {
+    startTransition(async () => {
+      await updateDeal(dealId, { nextAction: text, nextActionDate: new Date(date) })
+      setNewStepOpen(false)
       router.refresh()
     })
   }
@@ -63,6 +75,25 @@ export function DueSoonQuickActions({ dealId }: { dealId: string }) {
       <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={(e) => handleRemind(21, e)} disabled={isPending}>
         3w
       </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-7 text-xs"
+        onClick={(e) => { stop(e); setNewStepOpen((v) => !v) }}
+        disabled={isPending}
+      >
+        New step
+      </Button>
+      {newStepOpen && (
+        <div className="mt-2 w-full border-t pt-2">
+          <NewStepForm
+            onSubmit={handleNewStep}
+            onCancel={() => setNewStepOpen(false)}
+            isPending={isPending}
+            placeholder="New next step..."
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -70,6 +101,7 @@ export function DueSoonQuickActions({ dealId }: { dealId: string }) {
 export function StaleActionQuickActions({ dealId }: { dealId: string }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [newStepOpen, setNewStepOpen] = useState(false)
 
   function handleClear(e: React.MouseEvent) {
     stop(e)
@@ -79,11 +111,39 @@ export function StaleActionQuickActions({ dealId }: { dealId: string }) {
     })
   }
 
+  function handleNewStep(text: string, date: string) {
+    startTransition(async () => {
+      await setActionTaken(dealId, false)
+      await updateDeal(dealId, { nextAction: text, nextActionDate: new Date(date) })
+      setNewStepOpen(false)
+      router.refresh()
+    })
+  }
+
   return (
-    <div onClick={stop} className="mt-2 border-t pt-2">
+    <div onClick={stop} className="mt-2 flex flex-wrap items-center gap-1.5 border-t pt-2">
       <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleClear} disabled={isPending}>
         Clear action
       </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-7 text-xs"
+        onClick={(e) => { stop(e); setNewStepOpen((v) => !v) }}
+        disabled={isPending}
+      >
+        New step
+      </Button>
+      {newStepOpen && (
+        <div className="mt-2 w-full border-t pt-2">
+          <NewStepForm
+            onSubmit={handleNewStep}
+            onCancel={() => setNewStepOpen(false)}
+            isPending={isPending}
+            placeholder="New next step..."
+          />
+        </div>
+      )}
     </div>
   )
 }
