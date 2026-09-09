@@ -7,6 +7,10 @@ export const workspaceTasks = sqliteTable("workspace_tasks", {
   id: text("id").primaryKey(),
   text: text("text").notNull(),
   isCompleted: integer("is_completed", { mode: "boolean" }).notNull().default(false),
+  // Set when isCompleted flips to true, cleared when unticked. Drives the
+  // midnight-UTC cleanup in getWorkspaceTasks() — kept separate from
+  // updatedAt so renaming a completed task doesn't reset its cleanup clock.
+  completedAt: integer("completed_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),

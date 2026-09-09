@@ -62,10 +62,18 @@ export async function seed() {
       id TEXT PRIMARY KEY,
       text TEXT NOT NULL,
       is_completed INTEGER NOT NULL DEFAULT 0,
+      completed_at INTEGER,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )
   `)
+  try {
+    await db.run(sql`ALTER TABLE workspace_tasks ADD COLUMN completed_at INTEGER`)
+  } catch { /* column already exists */ }
+  // Backfill for tasks completed before this column existed, using their
+  // last-updated time as a best guess — only touches rows still missing a
+  // value, so it's a no-op once done and never overwrites a real timestamp.
+  await db.run(sql`UPDATE workspace_tasks SET completed_at = updated_at WHERE is_completed = 1 AND completed_at IS NULL`)
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS workspace_notes (
       id TEXT PRIMARY KEY,

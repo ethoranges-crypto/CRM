@@ -4,6 +4,14 @@ export function todayMidnight(): Date {
   return d
 }
 
+// Midnight UTC, explicitly — independent of the server process's local
+// timezone (unlike todayMidnight() above). Used where a day boundary must
+// be UTC regardless of where the app happens to be deployed.
+export function todayMidnightUTC(): Date {
+  const now = new Date()
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+}
+
 export function addDays(date: Date, days: number): Date {
   const d = new Date(date)
   d.setDate(d.getDate() + days)

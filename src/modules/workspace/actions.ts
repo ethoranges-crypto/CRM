@@ -3,10 +3,11 @@
 import { db } from "@/lib/db"
 import { getCanEdit } from "@/lib/auth"
 import { workspaceTasks, workspaceNotes, workspaceProjects, workspaceProjectNotes } from "./schema"
-import { eq, asc, desc } from "drizzle-orm"
+import { eq, asc, desc, and, lt } from "drizzle-orm"
 import { nanoid } from "nanoid"
 import { revalidatePath } from "next/cache"
 import { isProjectStatus } from "./project-status"
+import { todayMidnightUTC } from "@/lib/business-days"
 import type { WorkspaceTask, WorkspaceNote, WorkspaceProjectWithNotes } from "./types"
 
 // This whole page is a private personal workspace — same visibility rule as
@@ -16,6 +17,12 @@ import type { WorkspaceTask, WorkspaceNote, WorkspaceProjectWithNotes } from "./
 
 export async function getWorkspaceTasks(): Promise<WorkspaceTask[]> {
   if (!(await getCanEdit())) return []
+  // Tasks ticked off before today (UTC) are cleared out here rather than the
+  // moment they're ticked, so unticking any time before the day rolls over
+  // keeps a task safe.
+  await db
+    .delete(workspaceTasks)
+    .where(and(eq(workspaceTasks.isCompleted, true), lt(workspaceTasks.completedAt, todayMidnightUTC())))
   return db.select().from(workspaceTasks).orderBy(asc(workspaceTasks.createdAt))
 }
 
@@ -42,7 +49,7 @@ export async function setWorkspaceTaskCompleted(id: string, completed: boolean):
   if (!(await getCanEdit())) return
   await db
     .update(workspaceTasks)
-    .set({ isCompleted: completed, updatedAt: new Date() })
+    .set({ isCompleted: completed, completedAt: completed ? new Date() : null, updatedAt: new Date() })
     .where(eq(workspaceTasks.id, id))
   revalidatePath("/workspace")
 }
