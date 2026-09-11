@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { formatDate } from "@/lib/format-date"
-import { isOverdue } from "@/lib/business-days"
+import { isOverdue, skipWeekend } from "@/lib/business-days"
 import {
   Dialog,
   DialogContent,
@@ -133,11 +133,14 @@ export function DealCardDialog({
   function handleSaveFollowUp() {
     if (!canEdit) return
     setSaveStatus("saving")
+    const shiftedDate = nextActionDate ? skipWeekend(new Date(nextActionDate)) : null
+    const shiftedDateStr = shiftedDate ? shiftedDate.toISOString().split("T")[0] : ""
+    if (shiftedDateStr !== nextActionDate) setNextActionDate(shiftedDateStr)
     startTransition(async () => {
       try {
         await updateDeal(deal.id, {
           nextAction: nextAction.trim() || null,
-          nextActionDate: nextActionDate ? new Date(nextActionDate) : null,
+          nextActionDate: shiftedDate,
         })
         markSaved()
         router.refresh()
@@ -159,7 +162,7 @@ export function DealCardDialog({
             : `${followUpDate}T09:00`
           await updateDeal(deal.id, {
             nextAction: noteText.trim(),
-            nextActionDate: new Date(dateStr),
+            nextActionDate: skipWeekend(new Date(dateStr)),
           })
         }
         setNoteText("")

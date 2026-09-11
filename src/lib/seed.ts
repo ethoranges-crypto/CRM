@@ -2,6 +2,7 @@ import { db } from "./db"
 import { pipelineColumns, deals, dealReminders } from "@/modules/deals/schema"
 import { sql, eq, inArray } from "drizzle-orm"
 import { nanoid } from "nanoid"
+import { skipWeekend } from "./business-days"
 
 const defaultColumns = [
   { title: "Lead", order: 0 },
@@ -146,7 +147,7 @@ export async function seed() {
         if (!deal.nextActionDate || soonest.dueAt < deal.nextActionDate) {
           await db
             .update(deals)
-            .set({ nextAction: soonest.note, nextActionDate: soonest.dueAt })
+            .set({ nextAction: soonest.note, nextActionDate: skipWeekend(soonest.dueAt) })
             .where(eq(deals.id, dealId))
         }
       }

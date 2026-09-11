@@ -3,8 +3,10 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { updateDeal, setActionTaken } from "../actions"
+import { updateDeal, setActionTaken, addNote } from "../actions"
 import { NewStepForm } from "./new-step-form"
+import { skipWeekend } from "@/lib/business-days"
+import { formatDate } from "@/lib/format-date"
 
 // Every handler stops propagation since these buttons live inside a card
 // whose own onClick opens the full deal dialog.
@@ -12,13 +14,21 @@ function stop(e: React.MouseEvent) {
   e.stopPropagation()
 }
 
+interface NextStepQuickActionsProps {
+  dealId: string
+  nextAction: string | null
+  nextActionDate: Date
+}
+
 // Every deal-driven Today bucket (Overdue, Due Today, Due This Week, Later)
 // shares this same set of actions on its next-step cards. "Done" clears the
-// next step, dropping the card off Today immediately. "Remind again in…"
-// pushes the date out without changing the instruction. "New step" replaces
-// the instruction itself, for when the next action has changed rather than
-// just its timing.
-export function NextStepQuickActions({ dealId }: { dealId: string }) {
+// next step, dropping the card off Today immediately, and logs a note so the
+// deal's history keeps a record of what was done. "Remind again in…" pushes
+// the date out without changing the instruction. "New step" replaces the
+// instruction itself — the superseded one is also logged as a note — for
+// when the next action has changed rather than just its timing. Any date
+// computed or entered here is nudged off a weekend onto the Monday after.
+export function NextStepQuickActions({ dealId, nextAction, nextActionDate }: NextStepQuickActionsProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [newStepOpen, setNewStepOpen] = useState(false)
@@ -26,6 +36,12 @@ export function NextStepQuickActions({ dealId }: { dealId: string }) {
   function handleDone(e: React.MouseEvent) {
     stop(e)
     startTransition(async () => {
+      if (nextAction?.trim()) {
+        await addNote(
+          dealId,
+          `Completed next step: ${nextAction} (was due ${formatDate(nextActionDate)})`
+        )
+      }
       await updateDeal(dealId, { nextAction: null, nextActionDate: null })
       router.refresh()
     })
@@ -36,14 +52,20 @@ export function NextStepQuickActions({ dealId }: { dealId: string }) {
     startTransition(async () => {
       const next = new Date()
       next.setDate(next.getDate() + days)
-      await updateDeal(dealId, { nextActionDate: next })
+      await updateDeal(dealId, { nextActionDate: skipWeekend(next) })
       router.refresh()
     })
   }
 
   function handleNewStep(text: string, date: string) {
     startTransition(async () => {
-      await updateDeal(dealId, { nextAction: text, nextActionDate: new Date(date) })
+      if (nextAction?.trim()) {
+        await addNote(
+          dealId,
+          `Next step superseded: ${nextAction} (was due ${formatDate(nextActionDate)})`
+        )
+      }
+      await updateDeal(dealId, { nextAction: text, nextActionDate: skipWeekend(new Date(date)) })
       setNewStepOpen(false)
       router.refresh()
     })
@@ -112,7 +134,7 @@ export function StaleActionQuickActions({ dealId }: { dealId: string }) {
   function handleNewStep(text: string, date: string) {
     startTransition(async () => {
       await setActionTaken(dealId, false)
-      await updateDeal(dealId, { nextAction: text, nextActionDate: new Date(date) })
+      await updateDeal(dealId, { nextAction: text, nextActionDate: skipWeekend(new Date(date)) })
       setNewStepOpen(false)
       router.refresh()
     })

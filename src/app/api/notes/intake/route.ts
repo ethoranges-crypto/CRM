@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { deals, dealNotes } from "@/modules/deals/schema"
 import { isNoteType } from "@/modules/deals/note-types"
+import { skipWeekend } from "@/lib/business-days"
 import { or, eq, sql } from "drizzle-orm"
 import { nanoid } from "nanoid"
 import { revalidatePath } from "next/cache"
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
       nextActionDate.setDate(nextActionDate.getDate() + body.followUpInDays)
       await db
         .update(deals)
-        .set({ nextAction: summary, nextActionDate, updatedAt: new Date() })
+        .set({ nextAction: summary, nextActionDate: skipWeekend(nextActionDate), updatedAt: new Date() })
         .where(eq(deals.id, targetDealId))
       reminderCreated = true
     }

@@ -92,7 +92,13 @@ export default async function TodayPage() {
                 subtitle={deal.nextAction ?? undefined}
                 badgeText={`Overdue — ${formatDate(deal.nextActionDate)}`}
                 badgeVariant="destructive"
-                quickActions={<NextStepQuickActions dealId={deal.id} />}
+                quickActions={
+                  <NextStepQuickActions
+                    dealId={deal.id}
+                    nextAction={deal.nextAction}
+                    nextActionDate={deal.nextActionDate}
+                  />
+                }
                 daysUntil={daysUntil(deal.nextActionDate)}
               />
             ))}
@@ -110,7 +116,13 @@ export default async function TodayPage() {
                 subtitle={deal.nextAction ?? undefined}
                 badgeText={formatDate(deal.nextActionDate)}
                 badgeVariant="outline"
-                quickActions={<NextStepQuickActions dealId={deal.id} />}
+                quickActions={
+                  <NextStepQuickActions
+                    dealId={deal.id}
+                    nextAction={deal.nextAction}
+                    nextActionDate={deal.nextActionDate}
+                  />
+                }
                 daysUntil={daysUntil(deal.nextActionDate)}
               />
             ))}
@@ -128,7 +140,13 @@ export default async function TodayPage() {
                 subtitle={deal.nextAction ?? undefined}
                 badgeText={formatDate(deal.nextActionDate)}
                 badgeVariant="outline"
-                quickActions={<NextStepQuickActions dealId={deal.id} />}
+                quickActions={
+                  <NextStepQuickActions
+                    dealId={deal.id}
+                    nextAction={deal.nextAction}
+                    nextActionDate={deal.nextActionDate}
+                  />
+                }
                 daysUntil={daysUntil(deal.nextActionDate)}
               />
             ))}
@@ -175,7 +193,13 @@ export default async function TodayPage() {
                 subtitle={deal.nextAction ?? undefined}
                 badgeText={formatDate(deal.nextActionDate)}
                 badgeVariant="outline"
-                quickActions={<NextStepQuickActions dealId={deal.id} />}
+                quickActions={
+                  <NextStepQuickActions
+                    dealId={deal.id}
+                    nextAction={deal.nextAction}
+                    nextActionDate={deal.nextActionDate}
+                  />
+                }
                 daysUntil={daysUntil(deal.nextActionDate)}
               />
             ))}

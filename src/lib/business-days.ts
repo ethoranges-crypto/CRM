@@ -18,6 +18,16 @@ export function addDays(date: Date, days: number): Date {
   return d
 }
 
+// Rolls a date forward to the following Monday if it falls on a Saturday or
+// Sunday, preserving its time-of-day — used everywhere a next-step date is
+// set so no next step ever lands on a weekend.
+export function skipWeekend(date: Date): Date {
+  const day = date.getDay()
+  if (day === 6) return addDays(date, 2)
+  if (day === 0) return addDays(date, 1)
+  return date
+}
+
 // Whether a date falls strictly before today (calendar-day granularity, not
 // wall-clock time — a date stamped at today's midnight is never "overdue").
 export function isOverdue(date: Date): boolean {
