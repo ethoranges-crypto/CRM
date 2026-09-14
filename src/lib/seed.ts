@@ -100,6 +100,14 @@ export async function seed() {
       created_at INTEGER NOT NULL
     )
   `)
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS workspace_achievements (
+      id TEXT PRIMARY KEY,
+      text TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `)
 
   const existing = await db.select().from(pipelineColumns)
   if (existing.length === 0) {

@@ -2,13 +2,19 @@
 
 import { db } from "@/lib/db"
 import { getCanEdit } from "@/lib/auth"
-import { workspaceTasks, workspaceNotes, workspaceProjects, workspaceProjectNotes } from "./schema"
+import {
+  workspaceTasks,
+  workspaceNotes,
+  workspaceProjects,
+  workspaceProjectNotes,
+  workspaceAchievements,
+} from "./schema"
 import { eq, asc, desc, and, lt } from "drizzle-orm"
 import { nanoid } from "nanoid"
 import { revalidatePath } from "next/cache"
 import { isProjectStatus } from "./project-status"
 import { todayMidnightUTC } from "@/lib/business-days"
-import type { WorkspaceTask, WorkspaceNote, WorkspaceProjectWithNotes } from "./types"
+import type { WorkspaceTask, WorkspaceNote, WorkspaceProjectWithNotes, WorkspaceAchievement } from "./types"
 
 // This whole page is a private personal workspace — same visibility rule as
 // the existing /todos page, not the shared read-only view deals/reminders get.
@@ -157,5 +163,41 @@ export async function addWorkspaceProjectNote(projectId: string, content: string
 export async function deleteWorkspaceProjectNote(id: string): Promise<void> {
   if (!(await getCanEdit())) return
   await db.delete(workspaceProjectNotes).where(eq(workspaceProjectNotes.id, id))
+  revalidatePath("/workspace")
+}
+
+// ─── Achievements ───
+//
+// A permanent log — no completion state, nothing ever gets cleared out
+// automatically. Newest first, so the latest win is visible without
+// scrolling.
+
+export async function getWorkspaceAchievements(): Promise<WorkspaceAchievement[]> {
+  if (!(await getCanEdit())) return []
+  return db.select().from(workspaceAchievements).orderBy(desc(workspaceAchievements.createdAt))
+}
+
+export async function createWorkspaceAchievement(text: string): Promise<void> {
+  if (!(await getCanEdit())) return
+  const trimmed = text.trim()
+  if (!trimmed) return
+  await db.insert(workspaceAchievements).values({ id: nanoid(), text: trimmed })
+  revalidatePath("/workspace")
+}
+
+export async function updateWorkspaceAchievementText(id: string, text: string): Promise<void> {
+  if (!(await getCanEdit())) return
+  const trimmed = text.trim()
+  if (!trimmed) return
+  await db
+    .update(workspaceAchievements)
+    .set({ text: trimmed, updatedAt: new Date() })
+    .where(eq(workspaceAchievements.id, id))
+  revalidatePath("/workspace")
+}
+
+export async function deleteWorkspaceAchievement(id: string): Promise<void> {
+  if (!(await getCanEdit())) return
+  await db.delete(workspaceAchievements).where(eq(workspaceAchievements.id, id))
   revalidatePath("/workspace")
 }

@@ -52,3 +52,16 @@ export const workspaceProjectNotes = sqliteTable("workspace_project_notes", {
     .notNull()
     .$defaultFn(() => new Date()),
 })
+
+// A permanent log, not a task list — entries are never "done" and never get
+// cleared out, unlike workspace_tasks.
+export const workspaceAchievements = sqliteTable("workspace_achievements", {
+  id: text("id").primaryKey(),
+  text: text("text").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+})

@@ -5,10 +5,12 @@ import {
   getWorkspaceTasks,
   getWorkspaceNotes,
   getWorkspaceProjects,
+  getWorkspaceAchievements,
 } from "@/modules/workspace/actions"
 import { WorkspaceTodoPanel } from "@/modules/workspace/components/workspace-todo-panel"
 import { WorkspaceNotesPanel } from "@/modules/workspace/components/workspace-notes-panel"
 import { WorkspaceProjectsPanel } from "@/modules/workspace/components/workspace-projects-panel"
+import { WorkspaceAchievementsPanel } from "@/modules/workspace/components/workspace-achievements-panel"
 
 export const dynamic = "force-dynamic"
 
@@ -18,10 +20,11 @@ export default async function WorkspacePage() {
   const canEdit = await getCanEdit()
   if (!canEdit) redirect("/deals")
 
-  const [tasks, notes, projects] = await Promise.all([
+  const [tasks, notes, projects, achievements] = await Promise.all([
     getWorkspaceTasks(),
     getWorkspaceNotes(),
     getWorkspaceProjects(),
+    getWorkspaceAchievements(),
   ])
 
   return (
@@ -33,10 +36,11 @@ export default async function WorkspacePage() {
         </p>
       </div>
       <div className="flex-1 overflow-auto p-6">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:items-start">
+        <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-4">
           <WorkspaceTodoPanel initialTasks={tasks} />
           <WorkspaceNotesPanel initialNotes={notes} />
           <WorkspaceProjectsPanel initialProjects={projects} />
+          <WorkspaceAchievementsPanel initialAchievements={achievements} />
         </div>
       </div>
     </div>
