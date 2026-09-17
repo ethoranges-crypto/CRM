@@ -136,12 +136,12 @@ function WorkspaceTaskRow({
   }
 
   return (
-    <div className="group flex items-center gap-2 rounded-md px-1 py-1.5 hover:bg-accent/50">
+    <div className="group flex items-start gap-2 rounded-md px-1 py-1.5 hover:bg-accent/50">
       <button
         onClick={onToggle}
         title={task.isCompleted ? "Mark not done" : "Mark done"}
         className={cn(
-          "flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-colors",
+          "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-colors",
           task.isCompleted
             ? "border-green-500 bg-green-500 text-white"
             : "border-muted-foreground/40 hover:border-green-400"
@@ -169,7 +169,7 @@ function WorkspaceTaskRow({
         <span
           onClick={() => setEditing(true)}
           className={cn(
-            "flex-1 cursor-text truncate text-sm transition-opacity",
+            "min-w-0 flex-1 cursor-text whitespace-normal break-words py-0.5 text-sm transition-opacity",
             task.isCompleted && "text-muted-foreground line-through opacity-60"
           )}
         >
@@ -180,7 +180,7 @@ function WorkspaceTaskRow({
       <button
         onClick={onDelete}
         title="Delete task"
-        className="shrink-0 text-muted-foreground/40 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+        className="mt-0.5 shrink-0 text-muted-foreground/40 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>

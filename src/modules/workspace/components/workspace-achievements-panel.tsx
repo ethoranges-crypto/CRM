@@ -124,7 +124,7 @@ function WorkspaceAchievementRow({
   }
 
   return (
-    <div className="group flex items-center gap-2 rounded-md px-1 py-1.5 hover:bg-accent/50">
+    <div className="group flex items-start gap-2 rounded-md px-1 py-1.5 hover:bg-accent/50">
       {editing ? (
         <Input
           autoFocus
@@ -143,7 +143,7 @@ function WorkspaceAchievementRow({
       ) : (
         <span
           onClick={() => setEditing(true)}
-          className="flex-1 cursor-text truncate text-sm"
+          className="min-w-0 flex-1 cursor-text whitespace-normal break-words py-0.5 text-sm"
         >
           {achievement.text}
         </span>
@@ -152,7 +152,7 @@ function WorkspaceAchievementRow({
       <button
         onClick={onDelete}
         title="Delete achievement"
-        className="shrink-0 text-muted-foreground/40 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+        className="mt-0.5 shrink-0 text-muted-foreground/40 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>

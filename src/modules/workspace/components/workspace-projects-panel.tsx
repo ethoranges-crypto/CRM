@@ -148,7 +148,7 @@ function WorkspaceProjectRow({
 
   return (
     <div className="group rounded-md px-1 py-1.5 hover:bg-accent/50">
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-2">
         {editing ? (
           <Input
             autoFocus
@@ -167,7 +167,7 @@ function WorkspaceProjectRow({
         ) : (
           <span
             onClick={() => setEditing(true)}
-            className="flex-1 cursor-text truncate text-sm"
+            className="min-w-0 flex-1 cursor-text whitespace-normal break-words py-0.5 text-sm"
           >
             {project.name}
           </span>
@@ -176,7 +176,7 @@ function WorkspaceProjectRow({
         <button
           onClick={() => setNotesOpen(true)}
           title="Notes"
-          className="shrink-0 text-muted-foreground/40 opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+          className="mt-0.5 shrink-0 text-muted-foreground/40 opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
         >
           <MessageSquare className="h-3.5 w-3.5" />
         </button>
@@ -209,7 +209,7 @@ function WorkspaceProjectRow({
         <button
           onClick={onDelete}
           title="Delete project"
-          className="shrink-0 text-muted-foreground/40 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+          className="mt-0.5 shrink-0 text-muted-foreground/40 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
